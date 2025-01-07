@@ -11,15 +11,15 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 
-function Authentication() {
+function SignUp() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleLogin = async () => {
+  const handleSignUp = async () => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
       });
@@ -31,7 +31,7 @@ function Authentication() {
       }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.');
-      console.error('Login error:', err);
+      console.error('Sign-up error:', err);
     }
   };
 
@@ -40,7 +40,7 @@ function Authentication() {
       <Paper elevation={3} sx={{ padding: 4, mt: 8 }}>
         <Box textAlign="center" mb={2}>
           <Typography variant="h4" component="h1" gutterBottom>
-            Slack Clone Login
+            Sign Up
           </Typography>
         </Box>
         <Box component="form" noValidate autoComplete="off">
@@ -70,17 +70,17 @@ function Authentication() {
               variant="contained"
               color="primary"
               fullWidth
-              onClick={handleLogin}
+              onClick={handleSignUp}
             >
-              Login
+              Sign Up
             </Button>
           </Box>
         </Box>
         <Box textAlign="center" mt={2}>
           <Typography variant="body2">
-            Don’t have an account?{' '}
-            <Link href="/signup" underline="hover">
-              Sign up here
+            Already have an account?{' '}
+            <Link href="/" underline="hover">
+              Log in here
             </Link>
           </Typography>
         </Box>
@@ -89,4 +89,4 @@ function Authentication() {
   );
 }
 
-export default Authentication;
+export default SignUp;
