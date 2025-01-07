@@ -21,17 +21,22 @@ import TagIcon from '@mui/icons-material/Tag';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import Messaging from '../components/Messaging';
+import DirectMessaging from '../components/DirectMessaging';
 
 function UserPage() {
   const navigate = useNavigate();
   const [channels, setChannels] = useState([]);
+  const [users, setUsers] = useState([]);
   const [selectedChannel, setSelectedChannel] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [channelsOpen, setChannelsOpen] = useState(true);
+  const [dmsOpen, setDmsOpen] = useState(true);
 
   useEffect(() => {
     fetchUserData();
     fetchChannels();
+    fetchUsers();
   }, []);
 
   const fetchUserData = async () => {
@@ -72,6 +77,22 @@ function UserPage() {
     }
   };
 
+  const fetchUsers = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, name')
+      .neq('id', user.id); // Don't include the current user
+
+    if (error) {
+      console.error('Error fetching users:', error);
+    } else {
+      setUsers(data);
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
@@ -83,6 +104,20 @@ function UserPage() {
 
   const handleChannelsClick = () => {
     setChannelsOpen(!channelsOpen);
+  };
+
+  const handleDMsClick = () => {
+    setDmsOpen(!dmsOpen);
+  };
+
+  const handleUserSelect = (user) => {
+    setSelectedUser(user);
+    setSelectedChannel(null); // Deselect channel when selecting a DM
+  };
+
+  const handleChannelSelect = (channel) => {
+    setSelectedChannel(channel);
+    setSelectedUser(null); // Deselect DM when selecting a channel
   };
 
   return (
@@ -121,10 +156,10 @@ function UserPage() {
             
             <Collapse in={channelsOpen} timeout="auto" unmountOnExit>
               <List component="div" disablePadding>
-                {channels.map((channel, index) => (
+                {channels.map((channel) => (
                   <ListItemButton
-                    key={index}
-                    onClick={() => setSelectedChannel(channel)}
+                    key={channel.id}
+                    onClick={() => handleChannelSelect(channel)}
                     selected={selectedChannel?.id === channel.id}
                     sx={{ pl: 4 }}
                   >
@@ -132,6 +167,33 @@ function UserPage() {
                       <TagIcon fontSize="small" />
                     </ListItemIcon>
                     <ListItemText primary={channel.name} />
+                  </ListItemButton>
+                ))}
+              </List>
+            </Collapse>
+
+            <ListItemButton onClick={handleDMsClick}>
+              <ListItemText primary="Direct Messages" />
+              {dmsOpen ? <ExpandLess /> : <ExpandMore />}
+            </ListItemButton>
+
+            <Collapse in={dmsOpen} timeout="auto" unmountOnExit>
+              <List component="div" disablePadding>
+                {users.map((user) => (
+                  <ListItemButton
+                    key={user.id}
+                    onClick={() => handleUserSelect(user)}
+                    selected={selectedUser?.id === user.id}
+                    sx={{ pl: 4 }}
+                  >
+                    <ListItemIcon>
+                      <Avatar 
+                        sx={{ width: 24, height: 24, fontSize: '0.75rem' }}
+                      >
+                        {user.name.charAt(0).toUpperCase()}
+                      </Avatar>
+                    </ListItemIcon>
+                    <ListItemText primary={user.name} />
                   </ListItemButton>
                 ))}
               </List>
@@ -152,7 +214,7 @@ function UserPage() {
           </Toolbar>
         </AppBar>
 
-        {selectedChannel && (
+        {(selectedChannel || selectedUser) && (
           <Box sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)' }}>
             <Box sx={{ 
               p: 2, 
@@ -163,13 +225,28 @@ function UserPage() {
               top: 0,
               zIndex: 1,
             }}>
-              <Typography variant="h6"># {selectedChannel.name}</Typography>
-              <Typography variant="body2" color="textSecondary">
-                Welcome to the {selectedChannel.name} channel!
-              </Typography>
+              {selectedChannel ? (
+                <>
+                  <Typography variant="h6"># {selectedChannel.name}</Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Welcome to the {selectedChannel.name} channel!
+                  </Typography>
+                </>
+              ) : (
+                <>
+                  <Typography variant="h6">{selectedUser.name}</Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Direct message with {selectedUser.name}
+                  </Typography>
+                </>
+              )}
             </Box>
             <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
-              <Messaging channelId={selectedChannel.id} />
+              {selectedChannel ? (
+                <Messaging channelId={selectedChannel.id} />
+              ) : (
+                <DirectMessaging recipientId={selectedUser.id} />
+              )}
             </Box>
           </Box>
         )}
