@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css'; // Import Quill styles
+import './Messaging.css'; // Import custom styles
 
 export default function Messaging({ channelId }) {
   const [messages, setMessages] = useState([]);
@@ -72,17 +75,19 @@ export default function Messaging({ channelId }) {
       <div>
         {messages.map((msg) => (
           <div key={msg.id}>
-            <strong>{msg.sender_id}</strong>: {msg.content}
+            <strong>{msg.sender_id}</strong>: <span dangerouslySetInnerHTML={{ __html: msg.content }} />
           </div>
         ))}
       </div>
-      <input
-        type="text"
-        value={newMessage}
-        onChange={(e) => setNewMessage(e.target.value)}
-        placeholder="Type your message..."
-      />
-      <button onClick={sendMessage}>Send</button>
+      <div className="editor-container">
+        <ReactQuill
+          theme="snow"
+          value={newMessage}
+          onChange={setNewMessage}
+          placeholder="Type your message..."
+        />
+        <button className="send-button" onClick={sendMessage}>Send</button>
+      </div>
     </div>
   );
 }

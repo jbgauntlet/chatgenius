@@ -85,7 +85,7 @@ function UserPage() {
         <AppBar position="static" color="primary">
           <Toolbar>
             <Typography variant="h6" sx={{ flexGrow: 1 }}>
-              Slack Clone
+              ChatGenius
             </Typography>
             <Button color="inherit" onClick={handleLogout}>
               Logout
