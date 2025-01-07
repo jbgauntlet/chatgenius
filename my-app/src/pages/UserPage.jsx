@@ -14,10 +14,15 @@ import {
   Avatar,
   Divider,
   Collapse,
+  Modal,
+  TextField,
+  Paper,
+  Stack,
 } from '@mui/material';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import TagIcon from '@mui/icons-material/Tag';
+import AddIcon from '@mui/icons-material/Add';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import Messaging from '../components/Messaging';
@@ -32,6 +37,8 @@ function UserPage() {
   const [currentUser, setCurrentUser] = useState(null);
   const [channelsOpen, setChannelsOpen] = useState(true);
   const [dmsOpen, setDmsOpen] = useState(true);
+  const [isCreateChannelOpen, setIsCreateChannelOpen] = useState(false);
+  const [newChannelName, setNewChannelName] = useState('');
 
   useEffect(() => {
     fetchUserData();
@@ -120,6 +127,27 @@ function UserPage() {
     setSelectedUser(null); // Deselect DM when selecting a channel
   };
 
+  const handleCreateChannel = async () => {
+    if (!newChannelName.trim()) return;
+
+    const { data, error } = await supabase
+      .from('channels')
+      .insert([{ name: newChannelName.trim() }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating channel:', error);
+    } else {
+      setNewChannelName('');
+      setIsCreateChannelOpen(false);
+      // Set the newly created channel as selected
+      setSelectedChannel(data);
+      // Update the channels list
+      setChannels(prev => [...prev, data]);
+    }
+  };
+
   return (
     <Box sx={{ display: 'flex', height: '100vh', width: '100%' }}>
       <Drawer
@@ -169,6 +197,15 @@ function UserPage() {
                     <ListItemText primary={channel.name} />
                   </ListItemButton>
                 ))}
+                <ListItemButton
+                  onClick={() => setIsCreateChannelOpen(true)}
+                  sx={{ pl: 4 }}
+                >
+                  <ListItemIcon>
+                    <AddIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText primary="Add Channel" />
+                </ListItemButton>
               </List>
             </Collapse>
 
@@ -251,6 +288,56 @@ function UserPage() {
           </Box>
         )}
       </Box>
+
+      <Modal
+        open={isCreateChannelOpen}
+        onClose={() => setIsCreateChannelOpen(false)}
+        aria-labelledby="create-channel-modal"
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        }}
+      >
+        <Paper sx={{ p: 4, maxWidth: 400, width: '90%' }}>
+          <Typography variant="h6" component="h2" gutterBottom>
+            Create a new channel
+          </Typography>
+          <Stack spacing={3}>
+            <TextField
+              autoFocus
+              fullWidth
+              placeholder="Enter channel name"
+              value={newChannelName}
+              onChange={(e) => setNewChannelName(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleCreateChannel();
+                }
+              }}
+            />
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+              <Button 
+                variant="outlined" 
+                onClick={() => {
+                  setIsCreateChannelOpen(false);
+                  setNewChannelName('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="contained" 
+                onClick={handleCreateChannel}
+                disabled={!newChannelName.trim()}
+              >
+                Create Channel
+              </Button>
+            </Box>
+          </Stack>
+        </Paper>
+      </Modal>
     </Box>
   );
 }
