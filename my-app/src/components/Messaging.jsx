@@ -18,8 +18,35 @@ export default function Messaging({ channelId }) {
 
     const channel = supabase
       .channel('public:messages')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `channel_id=eq.${channelId}` }, (payload) => {
-        setMessages((prev) => [...prev, payload.new]);
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'messages', 
+        filter: `channel_id=eq.${channelId}` 
+      }, async (payload) => {
+        // Fetch the complete message data including sender info
+        const { data: messageData, error } = await supabase
+          .from("messages")
+          .select(`
+            *,
+            users:sender_id (
+              name
+            )
+          `)
+          .eq('id', payload.new.id)
+          .single();
+
+        if (error) {
+          console.error('Error fetching message details:', error);
+          return;
+        }
+
+        // Check for duplicates before adding
+        setMessages(prev => {
+          const messageExists = prev.some(msg => msg.id === messageData.id);
+          if (messageExists) return prev;
+          return [...prev, messageData];
+        });
         scrollToBottom();
       })
       .subscribe();
@@ -55,28 +82,21 @@ export default function Messaging({ channelId }) {
   async function sendMessage() {
     if (newMessage.trim() === "") return;
 
-    const { data: userData, error: userError } = await supabase.auth.getUser();
-    if (userError || !userData || !userData.user) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
       console.error('Error fetching user:', userError);
       return;
     }
 
-    const userId = userData.user.id;
-    console.log(userData);
-    console.log('Sending message with sender_id:', userId);
-    console.log({
-        channel_id: channelId,
-        sender_id: userData.id,
-        content: newMessage,
-      });
+    const messageData = {
+      channel_id: channelId,
+      sender_id: user.id,
+      content: newMessage,
+    };
 
-    const { error } = await supabase.from("messages").insert([
-      {
-        channel_id: channelId,
-        sender_id: userId,
-        content: newMessage,
-      },
-    ]);
+    const { error } = await supabase
+      .from("messages")
+      .insert([messageData]);
 
     if (error) {
       console.error('Error sending message:', error);
