@@ -9,9 +9,15 @@ import {
   List,
   ListItem,
   ListItemText,
+  ListItemButton,
+  ListItemIcon,
   Avatar,
   Divider,
+  Collapse,
 } from '@mui/material';
+import ExpandLess from '@mui/icons-material/ExpandLess';
+import ExpandMore from '@mui/icons-material/ExpandMore';
+import TagIcon from '@mui/icons-material/Tag';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import Messaging from '../components/Messaging';
@@ -21,6 +27,7 @@ function UserPage() {
   const [channels, setChannels] = useState([]);
   const [selectedChannel, setSelectedChannel] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
+  const [channelsOpen, setChannelsOpen] = useState(true);
 
   useEffect(() => {
     fetchUserData();
@@ -29,24 +36,25 @@ function UserPage() {
 
   const fetchUserData = async () => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
+    
+    if (authError) {
       console.error('Error fetching auth user:', authError);
-      navigate('/');
       return;
     }
 
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('name')
-      .eq('id', user.id)
-      .single();
+    if (user) {
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
 
-    if (userError) {
-      console.error('Error fetching user data:', userError);
-      return;
+      if (userError) {
+        console.error('Error fetching user data:', userError);
+      } else {
+        setCurrentUser(userData);
+      }
     }
-
-    setCurrentUser({ ...user, ...userData });
   };
 
   const fetchChannels = async () => {
@@ -73,9 +81,8 @@ function UserPage() {
     }
   };
 
-  // Get the first letter of the user's name for the avatar
-  const getAvatarLetter = () => {
-    return currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : '?';
+  const handleChannelsClick = () => {
+    setChannelsOpen(!channelsOpen);
   };
 
   return (
@@ -92,24 +99,43 @@ function UserPage() {
         <Box sx={{ overflow: 'auto' }}>
           <List>
             <ListItem>
-              <Avatar sx={{ bgcolor: 'primary.main', mr: 2 }}>
-                {getAvatarLetter()}
+              <Avatar 
+                alt={currentUser?.name || 'User'} 
+                src="/static/images/avatar/1.jpg"
+                sx={{ bgcolor: 'primary.main' }}
+              >
+                {currentUser?.name?.charAt(0).toUpperCase()}
               </Avatar>
               <ListItemText 
-                primary={currentUser?.name || 'Loading...'}
+                primary={currentUser?.name || 'Loading...'} 
                 secondary="Online"
+                sx={{ ml: 2 }}
               />
             </ListItem>
             <Divider />
-            {channels.map((channel, index) => (
-              <ListItem
-                button
-                key={index}
-                onClick={() => setSelectedChannel(channel)}
-              >
-                <ListItemText primary={`# ${channel.name}`} />
-              </ListItem>
-            ))}
+            
+            <ListItemButton onClick={handleChannelsClick}>
+              <ListItemText primary="Channels" />
+              {channelsOpen ? <ExpandLess /> : <ExpandMore />}
+            </ListItemButton>
+            
+            <Collapse in={channelsOpen} timeout="auto" unmountOnExit>
+              <List component="div" disablePadding>
+                {channels.map((channel, index) => (
+                  <ListItemButton
+                    key={index}
+                    onClick={() => setSelectedChannel(channel)}
+                    selected={selectedChannel?.id === channel.id}
+                    sx={{ pl: 4 }}
+                  >
+                    <ListItemIcon>
+                      <TagIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primary={channel.name} />
+                  </ListItemButton>
+                ))}
+              </List>
+            </Collapse>
           </List>
         </Box>
       </Drawer>
