@@ -40,7 +40,7 @@ function Authentication() {
       <Paper elevation={3} sx={{ padding: 4, mt: 8 }}>
         <Box textAlign="center" mb={2}>
           <Typography variant="h4" component="h1" gutterBottom>
-            Slack Clone Login
+            ChatGenius Login
           </Typography>
         </Box>
         <Box component="form" noValidate autoComplete="off">
