@@ -4,7 +4,7 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import './Messaging.css';
 
-export default function DirectMessaging({ recipientId }) {
+export default function DirectMessaging({ recipientId, recipientName }) {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const messageEndRef = useRef(null);
@@ -80,7 +80,7 @@ export default function DirectMessaging({ recipientId }) {
     return () => {
       subscription.then(cleanup => cleanup?.());
     };
-  }, [recipientId]);
+  }, [recipientId, recipientName]);
 
   useEffect(() => {
     scrollToBottom();
@@ -161,8 +161,21 @@ export default function DirectMessaging({ recipientId }) {
         flexDirection: 'column'
       }}>
         {messages.map((msg) => (
-          <div key={msg.id} style={{ marginBottom: '12px' }}>
-            <strong>{msg.sender?.name || 'Unknown User'}</strong>: <span dangerouslySetInnerHTML={{ __html: msg.content }} />
+          <div key={msg.id} className="message-container">
+            <div className="message-header">
+              <div className="message-user-info">
+                <div className="message-avatar">
+                  {msg.sender?.name?.charAt(0).toUpperCase()}
+                </div>
+                <span className="message-name">{msg.sender?.name || 'Unknown User'}</span>
+              </div>
+              <span className="message-timestamp">
+                {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+            <div className="message-content">
+              <span dangerouslySetInnerHTML={{ __html: msg.content }} />
+            </div>
           </div>
         ))}
         <div ref={messageEndRef} />
@@ -174,10 +187,11 @@ export default function DirectMessaging({ recipientId }) {
       }}>
         <div className="editor-container">
           <ReactQuill
+            key={recipientId}
             theme="snow"
             value={newMessage}
             onChange={setNewMessage}
-            placeholder="Type your message..."
+            placeholder={`Message ${recipientName || '...'}`}
           />
           <button className="send-button" onClick={sendMessage}>Send</button>
         </div>

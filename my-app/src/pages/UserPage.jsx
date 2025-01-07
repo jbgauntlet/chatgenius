@@ -280,9 +280,15 @@ function UserPage() {
             </Box>
             <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
               {selectedChannel ? (
-                <Messaging channelId={selectedChannel.id} />
+                <Messaging 
+                  channelId={selectedChannel.id} 
+                  channelName={selectedChannel.name}
+                />
               ) : (
-                <DirectMessaging recipientId={selectedUser.id} />
+                <DirectMessaging 
+                  recipientId={selectedUser.id}
+                  recipientName={selectedUser.name}
+                />
               )}
             </Box>
           </Box>
