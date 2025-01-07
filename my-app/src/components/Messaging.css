@@ -1,9 +1,24 @@
 .editor-container {
   position: relative;
+  background-color: #fff;
 }
 
 .ql-container {
-  height: 150px; /* Adjust the height as needed */
+  height: 100px;
+  min-height: 100px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.ql-toolbar {
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-bottom: 1px solid #e0e0e0 !important;
+}
+
+.ql-container {
+  border: none !important;
 }
 
 .send-button {
@@ -16,6 +31,7 @@
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  z-index: 1;
 }
 
 .send-button:hover {
