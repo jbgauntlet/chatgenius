@@ -612,11 +612,11 @@ function UserPage() {
         minHeight: 0,
       }}>
         {/* Hero Sidebar */}
-        <Drawer
-          variant="permanent"
-          sx={{
+      <Drawer
+        variant="permanent"
+        sx={{
             width: '70px',
-            flexShrink: 0,
+          flexShrink: 0,
             height: '100%',
             '& .MuiDrawer-paper': { 
               position: 'relative',
@@ -1045,8 +1045,8 @@ function UserPage() {
                   backgroundColor: '#E55A1F',
                 },
               }}
-            >
-              {currentUser?.name?.charAt(0).toUpperCase()}
+              >
+                {currentUser?.name?.charAt(0).toUpperCase()}
             </IconButton>
             <Popper
               open={Boolean(userMenuAnchor)}
@@ -1156,7 +1156,7 @@ function UserPage() {
             }}>
               <List>
                 <ListItemButton onClick={handleWorkspaceMenuClick}>
-                  <ListItemText 
+              <ListItemText 
                     primary={currentWorkspace?.name || 'Select a workspace'} 
                     sx={{ 
                       ml: 2,
@@ -1222,8 +1222,8 @@ function UserPage() {
                     </Grow>
                   )}
                 </Popper>
-                <Divider />
-                
+            <Divider />
+            
                 <ListItemButton 
                   onClick={handleChannelsClick}
                   sx={{
@@ -1236,18 +1236,18 @@ function UserPage() {
                   }}
                 >
                   <Box sx={{ mr: 1.5 }}>
-                    {channelsOpen ? <ExpandLess /> : <ExpandMore />}
+              {channelsOpen ? <ExpandLess /> : <ExpandMore />}
                   </Box>
                   <ListItemText primary="Channels" />
-                </ListItemButton>
-                
-                <Collapse in={channelsOpen} timeout="auto" unmountOnExit>
-                  <List component="div" disablePadding>
-                    {channels.map((channel) => (
-                      <ListItemButton
-                        key={channel.id}
-                        onClick={() => handleChannelSelect(channel)}
-                        selected={selectedChannel?.id === channel.id}
+            </ListItemButton>
+            
+            <Collapse in={channelsOpen} timeout="auto" unmountOnExit>
+              <List component="div" disablePadding>
+                {channels.map((channel) => (
+                  <ListItemButton
+                    key={channel.id}
+                    onClick={() => handleChannelSelect(channel)}
+                    selected={selectedChannel?.id === channel.id}
                         sx={{ 
                           pl: 4,
                           '&:hover': {
@@ -1268,13 +1268,13 @@ function UserPage() {
                         }}
                       >
                         <ListItemIcon sx={{ color: 'rgb(249, 237, 255)', minWidth: 36 }}>
-                          <TagIcon fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText primary={channel.name} />
-                      </ListItemButton>
-                    ))}
-                    <ListItemButton
-                      onClick={() => setIsCreateChannelOpen(true)}
+                      <TagIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primary={channel.name} />
+                  </ListItemButton>
+                ))}
+                <ListItemButton
+                  onClick={() => setIsCreateChannelOpen(true)}
                       sx={{ 
                         pl: 4,
                         '&:hover': {
@@ -1283,27 +1283,27 @@ function UserPage() {
                       }}
                     >
                       <ListItemIcon sx={{ color: 'rgb(249, 237, 255)', minWidth: 36 }}>
-                        <AddIcon fontSize="small" />
-                      </ListItemIcon>
-                      <ListItemText primary="Add Channel" />
-                    </ListItemButton>
-                  </List>
-                </Collapse>
+                    <AddIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText primary="Add Channel" />
+                </ListItemButton>
+              </List>
+            </Collapse>
 
-                <ListItemButton onClick={handleDMsClick}>
+            <ListItemButton onClick={handleDMsClick}>
                   <Box sx={{ mr: 1.5 }}>
-                    {dmsOpen ? <ExpandLess /> : <ExpandMore />}
+              {dmsOpen ? <ExpandLess /> : <ExpandMore />}
                   </Box>
                   <ListItemText primary="Direct Messages" />
-                </ListItemButton>
+            </ListItemButton>
 
-                <Collapse in={dmsOpen} timeout="auto" unmountOnExit>
-                  <List component="div" disablePadding>
-                    {users.map((user) => (
-                      <ListItemButton
-                        key={user.id}
-                        onClick={() => handleUserSelect(user)}
-                        selected={selectedUser?.id === user.id}
+            <Collapse in={dmsOpen} timeout="auto" unmountOnExit>
+              <List component="div" disablePadding>
+                {users.map((user) => (
+                  <ListItemButton
+                    key={user.id}
+                    onClick={() => handleUserSelect(user)}
+                    selected={selectedUser?.id === user.id}
                         sx={{ 
                           pl: 4,
                           '&:hover': {
@@ -1321,20 +1321,20 @@ function UserPage() {
                         }}
                       >
                         <ListItemIcon sx={{ minWidth: 36 }}>
-                          <Avatar 
-                            sx={{ width: 24, height: 24, fontSize: '0.75rem' }}
-                          >
-                            {user.name.charAt(0).toUpperCase()}
-                          </Avatar>
-                        </ListItemIcon>
-                        <ListItemText primary={user.name} />
-                      </ListItemButton>
-                    ))}
-                  </List>
-                </Collapse>
+                      <Avatar 
+                        sx={{ width: 24, height: 24, fontSize: '0.75rem' }}
+                      >
+                        {user.name.charAt(0).toUpperCase()}
+                      </Avatar>
+                    </ListItemIcon>
+                    <ListItemText primary={user.name} />
+                  </ListItemButton>
+                ))}
               </List>
-            </Box>
-          </Drawer>
+            </Collapse>
+          </List>
+        </Box>
+      </Drawer>
 
           {/* Content and Settings Container */}
           <Box sx={{ 
@@ -1351,55 +1351,55 @@ function UserPage() {
               height: '100%',
               bgcolor: '#fff',
             }}>
-              {(selectedChannel || selectedUser) && (
+        {(selectedChannel || selectedUser) && (
                 <Box sx={{ 
                   display: 'flex', 
                   flexDirection: 'column',
                   height: '100%',
                 }}>
                   {/* Header */}
-                  <Box sx={{ 
-                    p: 2, 
-                    borderBottom: 1, 
-                    borderColor: 'divider',
-                    backgroundColor: 'background.paper',
+            <Box sx={{ 
+              p: 2, 
+              borderBottom: 1, 
+              borderColor: 'divider',
+              backgroundColor: 'background.paper',
                     flexShrink: 0,
-                  }}>
-                    {selectedChannel ? (
-                      <>
-                        <Typography variant="h6"># {selectedChannel.name}</Typography>
-                        <Typography variant="body2" color="textSecondary">
-                          Welcome to the {selectedChannel.name} channel!
-                        </Typography>
-                      </>
-                    ) : (
-                      <>
-                        <Typography variant="h6">{selectedUser.name}</Typography>
-                        <Typography variant="body2" color="textSecondary">
-                          Direct message with {selectedUser.name}
-                        </Typography>
-                      </>
-                    )}
-                  </Box>
+            }}>
+              {selectedChannel ? (
+                <>
+                  <Typography variant="h6"># {selectedChannel.name}</Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Welcome to the {selectedChannel.name} channel!
+                  </Typography>
+                </>
+              ) : (
+                <>
+                  <Typography variant="h6">{selectedUser.name}</Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Direct message with {selectedUser.name}
+                  </Typography>
+                </>
+              )}
+            </Box>
 
                   {/* Messages Area */}
                   <Box sx={{ flexGrow: 1, minHeight: 0, overflow: 'hidden' }}>
-                    {selectedChannel ? (
-                      <Messaging 
-                        channelId={selectedChannel.id} 
-                        channelName={selectedChannel.name}
+              {selectedChannel ? (
+                <Messaging 
+                  channelId={selectedChannel.id} 
+                  channelName={selectedChannel.name}
                         workspaceId={currentWorkspace.id}
-                      />
-                    ) : (
-                      <DirectMessaging 
-                        recipientId={selectedUser.id}
-                        recipientName={selectedUser.name}
+                />
+              ) : (
+                <DirectMessaging 
+                  recipientId={selectedUser.id}
+                  recipientName={selectedUser.name}
                         workspaceId={currentWorkspace.id}
-                      />
-                    )}
-                  </Box>
-                </Box>
+                />
               )}
+            </Box>
+          </Box>
+        )}
             </Box>
 
             {/* Help Panel */}
