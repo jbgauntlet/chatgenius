@@ -4,7 +4,7 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import './Messaging.css';
 
-export default function DirectMessaging({ recipientId, recipientName }) {
+export default function DirectMessaging({ recipientId, recipientName, workspaceId }) {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const messageEndRef = useRef(null);
@@ -14,73 +14,72 @@ export default function DirectMessaging({ recipientId, recipientName }) {
   };
 
   useEffect(() => {
-    fetchMessages();
-
+    let channel;
+    
     const setupSubscription = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       // Subscribe to new messages - both incoming and outgoing
-      const channel = supabase
-        .channel(`direct_messages_${recipientId}`)
-        // Listen for messages where user is recipient
+      channel = supabase
+        .channel(`direct_messages_${recipientId}_${workspaceId}`)
         .on('postgres_changes', { 
           event: 'INSERT', 
           schema: 'public', 
           table: 'user_messages',
-          filter: `recipient_id=eq.${user.id}` 
-        }, handleNewMessage)
-        // Listen for messages where user is sender
-        .on('postgres_changes', { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'user_messages',
-          filter: `sender_id=eq.${user.id}` 
-        }, handleNewMessage)
-        .subscribe();
+          filter: `workspace_id=eq.${workspaceId}` 
+        }, async (payload) => {
+          // Only process messages that are part of this conversation
+          const isRelevantMessage = (
+            // Message is from current user to recipient
+            (payload.new.sender_id === user.id && payload.new.recipient_id === recipientId) ||
+            // Message is from recipient to current user
+            (payload.new.sender_id === recipientId && payload.new.recipient_id === user.id)
+          );
 
-      return () => {
-        supabase.removeChannel(channel);
-      };
+          if (!isRelevantMessage) return;
+
+          // Fetch the complete message data including sender info
+          const { data: messageData, error } = await supabase
+            .from("user_messages")
+            .select(`
+              *,
+              sender:sender_id (
+                name
+              ),
+              recipient:recipient_id (
+                name
+              )
+            `)
+            .eq('id', payload.new.id)
+            .single();
+
+          if (error) {
+            console.error('Error fetching message details:', error);
+            return;
+          }
+
+          // Only add the message if it's not already in the list
+          setMessages(prev => {
+            const messageExists = prev.some(msg => msg.id === messageData.id);
+            if (messageExists) return prev;
+            return [...prev, messageData];
+          });
+          scrollToBottom();
+        });
+
+      await channel.subscribe();
     };
 
-    const handleNewMessage = async (payload) => {
-      // Only process messages that are part of this conversation
-      if (payload.new.sender_id !== recipientId && payload.new.recipient_id !== recipientId) {
-        return;
-      }
+    fetchMessages();
+    setupSubscription();
 
-      // Fetch the complete message data including sender info
-      const { data: messageData, error } = await supabase
-        .from("user_messages")
-        .select(`
-          *,
-          sender:sender_id (
-            name
-          )
-        `)
-        .eq('id', payload.new.id)
-        .single();
-
-      if (error) {
-        console.error('Error fetching message details:', error);
-        return;
-      }
-
-      // Only add the message if it's not already in the list
-      setMessages(prev => {
-        const messageExists = prev.some(msg => msg.id === messageData.id);
-        if (messageExists) return prev;
-        return [...prev, messageData];
-      });
-      scrollToBottom();
-    };
-
-    const subscription = setupSubscription();
     return () => {
-      subscription.then(cleanup => cleanup?.());
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
-  }, [recipientId, recipientName]);
+  }, [recipientId, workspaceId]);
 
   useEffect(() => {
     scrollToBottom();
@@ -90,7 +89,7 @@ export default function DirectMessaging({ recipientId, recipientName }) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Fetch messages where the current user is either sender or recipient
+    // Fetch messages where the current user is either sender or recipient in this workspace
     const { data, error } = await supabase
       .from("user_messages")
       .select(`
@@ -102,6 +101,7 @@ export default function DirectMessaging({ recipientId, recipientName }) {
           name
         )
       `)
+      .eq('workspace_id', workspaceId)
       .or(`and(sender_id.eq.${user.id},recipient_id.eq.${recipientId}),and(sender_id.eq.${recipientId},recipient_id.eq.${user.id})`)
       .order("created_at", { ascending: true });
 
@@ -124,6 +124,7 @@ export default function DirectMessaging({ recipientId, recipientName }) {
     const messageData = {
       sender_id: user.id,
       recipient_id: recipientId,
+      workspace_id: workspaceId,
       content: newMessage,
     };
 

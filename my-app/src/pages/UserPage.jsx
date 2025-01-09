@@ -18,6 +18,8 @@ import {
   TextField,
   Paper,
   Stack,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
@@ -39,9 +41,14 @@ function UserPage() {
   const [dmsOpen, setDmsOpen] = useState(true);
   const [isCreateChannelOpen, setIsCreateChannelOpen] = useState(false);
   const [newChannelName, setNewChannelName] = useState('');
+  const [isCreateWorkspaceOpen, setIsCreateWorkspaceOpen] = useState(false);
+  const [newWorkspaceName, setNewWorkspaceName] = useState('');
+  const [workspaces, setWorkspaces] = useState([]);
+  const [currentWorkspace, setCurrentWorkspace] = useState(null);
 
   useEffect(() => {
     fetchUserData();
+    fetchWorkspaces();
     fetchChannels();
     fetchUsers();
   }, []);
@@ -70,9 +77,12 @@ function UserPage() {
   };
 
   const fetchChannels = async () => {
+    if (!currentWorkspace) return; // Don't fetch if no workspace is selected
+
     const { data, error } = await supabase
       .from('channels')
-      .select('id, name');
+      .select('id, name')
+      .eq('workspace_id', currentWorkspace.id);
 
     if (error) {
       console.error('Error fetching channels:', error);
@@ -83,6 +93,16 @@ function UserPage() {
       }
     }
   };
+
+  // Add useEffect to refetch channels when workspace changes
+  useEffect(() => {
+    if (currentWorkspace) {
+      fetchChannels();
+      setSelectedChannel(null); // Clear selected channel when switching workspaces
+    } else {
+      setChannels([]); // Clear channels if no workspace is selected
+    }
+  }, [currentWorkspace]);
 
   const fetchUsers = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -97,6 +117,33 @@ function UserPage() {
       console.error('Error fetching users:', error);
     } else {
       setUsers(data);
+    }
+  };
+
+  const fetchWorkspaces = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('workspace_memberships')
+      .select(`
+        workspace:workspaces (
+          id,
+          name,
+          owner_id
+        )
+      `)
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Error fetching workspaces:', error);
+    } else {
+      const workspaceList = data.map(item => item.workspace);
+      setWorkspaces(workspaceList);
+      // If there's no current workspace but we have workspaces, set the first one
+      if (!currentWorkspace && workspaceList.length > 0) {
+        setCurrentWorkspace(workspaceList[0]);
+      }
     }
   };
 
@@ -128,11 +175,14 @@ function UserPage() {
   };
 
   const handleCreateChannel = async () => {
-    if (!newChannelName.trim()) return;
+    if (!newChannelName.trim() || !currentWorkspace) return;
 
     const { data, error } = await supabase
       .from('channels')
-      .insert([{ name: newChannelName.trim() }])
+      .insert([{ 
+        name: newChannelName.trim(),
+        workspace_id: currentWorkspace.id
+      }])
       .select()
       .single();
 
@@ -148,14 +198,128 @@ function UserPage() {
     }
   };
 
+  const handleCreateWorkspace = async () => {
+    if (!newWorkspaceName.trim()) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Create the workspace
+    const { data: workspace, error: workspaceError } = await supabase
+      .from('workspaces')
+      .insert([{ 
+        name: newWorkspaceName.trim(),
+        owner_id: user.id,
+      }])
+      .select()
+      .single();
+
+    if (workspaceError) {
+      console.error('Error creating workspace:', workspaceError);
+      return;
+    }
+
+    // Add the creator as an owner in workspace_memberships
+    const { error: membershipError } = await supabase
+      .from('workspace_memberships')
+      .insert([{
+        workspace_id: workspace.id,
+        user_id: user.id,
+        role: 'owner'
+      }]);
+
+    if (membershipError) {
+      console.error('Error creating workspace membership:', membershipError);
+      return;
+    }
+
+    setNewWorkspaceName('');
+    setIsCreateWorkspaceOpen(false);
+    // Add the new workspace to the list and set it as current
+    setWorkspaces(prev => [...prev, workspace]);
+    setCurrentWorkspace(workspace);
+  };
+
   return (
     <Box sx={{ display: 'flex', height: '100vh', width: '100%' }}>
+      {/* Hero Sidebar */}
+      <Drawer
+        variant="permanent"
+        sx={{
+          width: 68,
+          flexShrink: 0,
+          '& .MuiDrawer-paper': { 
+            width: 68, 
+            boxSizing: 'border-box',
+            backgroundColor: 'grey.900',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            pt: 1,
+            zIndex: (theme) => theme.zIndex.drawer + 2,
+          },
+        }}
+      >
+        <Tooltip title="Create Workspace" placement="right">
+          <IconButton
+            onClick={() => setIsCreateWorkspaceOpen(true)}
+            sx={{ 
+              width: 48,
+              height: 48,
+              borderRadius: 2,
+              backgroundColor: 'grey.800',
+              color: 'grey.100',
+              '&:hover': {
+                backgroundColor: 'grey.700',
+              },
+              mb: 1,
+            }}
+          >
+            <AddIcon />
+          </IconButton>
+        </Tooltip>
+        <Divider sx={{ width: '80%', borderColor: 'grey.800' }} />
+        
+        {/* Workspace List */}
+        <Stack spacing={1} sx={{ width: '100%', alignItems: 'center', mt: 1 }}>
+          {workspaces.map((workspace) => (
+            <Tooltip key={workspace.id} title={workspace.name} placement="right">
+              <IconButton
+                onClick={() => setCurrentWorkspace(workspace)}
+                sx={{ 
+                  width: 48,
+                  height: 48,
+                  borderRadius: 2,
+                  backgroundColor: currentWorkspace?.id === workspace.id ? 'primary.main' : 'grey.800',
+                  color: 'grey.100',
+                  fontSize: '1.2rem',
+                  fontWeight: 'bold',
+                  '&:hover': {
+                    backgroundColor: currentWorkspace?.id === workspace.id ? 'primary.dark' : 'grey.700',
+                  },
+                }}
+              >
+                {workspace.name.charAt(0).toUpperCase()}
+              </IconButton>
+            </Tooltip>
+          ))}
+        </Stack>
+      </Drawer>
+
+      {/* Channel and DM Sidebar */}
       <Drawer
         variant="permanent"
         sx={{
           width: 280,
           flexShrink: 0,
-          [`& .MuiDrawer-paper`]: { width: 280, boxSizing: 'border-box' },
+          position: 'relative',
+          '& .MuiDrawer-paper': { 
+            width: 280, 
+            boxSizing: 'border-box',
+            position: 'relative',
+            borderLeft: 1,
+            borderColor: 'divider',
+          },
         }}
       >
         <Toolbar />
@@ -239,10 +403,17 @@ function UserPage() {
         </Box>
       </Drawer>
 
-      <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+      {/* Main Content Area */}
+      <Box sx={{ 
+        flexGrow: 1, 
+        display: 'flex', 
+        flexDirection: 'column', 
+        height: '100vh', 
+        overflow: 'hidden',
+      }}>
         <AppBar position="static" color="primary">
           <Toolbar sx={{ justifyContent: 'space-between' }}>
-            <Typography variant="h6">
+            <Typography variant="h6" noWrap component="div">
               ChatGenius
             </Typography>
             <Button color="inherit" onClick={handleLogout}>
@@ -283,11 +454,13 @@ function UserPage() {
                 <Messaging 
                   channelId={selectedChannel.id} 
                   channelName={selectedChannel.name}
+                  workspaceId={currentWorkspace.id}
                 />
               ) : (
                 <DirectMessaging 
                   recipientId={selectedUser.id}
                   recipientName={selectedUser.name}
+                  workspaceId={currentWorkspace.id}
                 />
               )}
             </Box>
@@ -339,6 +512,52 @@ function UserPage() {
                 disabled={!newChannelName.trim()}
               >
                 Create Channel
+              </Button>
+            </Box>
+          </Stack>
+        </Paper>
+      </Modal>
+
+      <Modal
+        open={isCreateWorkspaceOpen}
+        onClose={() => setIsCreateWorkspaceOpen(false)}
+        aria-labelledby="create-workspace-modal"
+      >
+        <Paper
+          sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: 400,
+            p: 4,
+            outline: 'none',
+          }}
+        >
+          <Typography variant="h6" component="h2" gutterBottom>
+            Create New Workspace
+          </Typography>
+          <Stack spacing={3}>
+            <TextField
+              fullWidth
+              label="Workspace Name"
+              value={newWorkspaceName}
+              onChange={(e) => setNewWorkspaceName(e.target.value)}
+              placeholder="Enter workspace name"
+            />
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+              <Button
+                variant="outlined"
+                onClick={() => setIsCreateWorkspaceOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="contained"
+                onClick={handleCreateWorkspace}
+                disabled={!newWorkspaceName.trim()}
+              >
+                Create
               </Button>
             </Box>
           </Stack>

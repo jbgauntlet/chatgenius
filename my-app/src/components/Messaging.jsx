@@ -4,7 +4,7 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css'; // Import Quill styles
 import './Messaging.css'; // Import custom styles
 
-export default function Messaging({ channelId, channelName }) {
+export default function Messaging({ channelId, channelName, workspaceId }) {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const messageEndRef = useRef(null);
@@ -34,6 +34,7 @@ export default function Messaging({ channelId, channelName }) {
             )
           `)
           .eq('id', payload.new.id)
+          .eq('workspace_id', workspaceId)
           .single();
 
         if (error) {
@@ -54,7 +55,7 @@ export default function Messaging({ channelId, channelName }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [channelId, channelName]);
+  }, [channelId, channelName, workspaceId]);
 
   useEffect(() => {
     scrollToBottom();
@@ -70,6 +71,7 @@ export default function Messaging({ channelId, channelName }) {
         )
       `)
       .eq("channel_id", channelId)
+      .eq("workspace_id", workspaceId)
       .order("created_at", { ascending: true });
 
     if (error) {
@@ -90,6 +92,7 @@ export default function Messaging({ channelId, channelName }) {
 
     const messageData = {
       channel_id: channelId,
+      workspace_id: workspaceId,
       sender_id: user.id,
       content: newMessage,
     };
