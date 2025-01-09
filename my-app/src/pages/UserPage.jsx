@@ -20,11 +20,18 @@ import {
   Stack,
   IconButton,
   Tooltip,
+  Menu,
+  MenuItem,
+  Popper,
+  Grow,
+  ClickAwayListener,
+  MenuList,
 } from '@mui/material';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import TagIcon from '@mui/icons-material/Tag';
 import AddIcon from '@mui/icons-material/Add';
+import CheckIcon from '@mui/icons-material/Check';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import Messaging from '../components/Messaging';
@@ -45,6 +52,7 @@ function UserPage() {
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [workspaces, setWorkspaces] = useState([]);
   const [currentWorkspace, setCurrentWorkspace] = useState(null);
+  const [workspaceSwitcherAnchor, setWorkspaceSwitcherAnchor] = useState(null);
 
   useEffect(() => {
     fetchUserData();
@@ -240,6 +248,19 @@ function UserPage() {
     setCurrentWorkspace(workspace);
   };
 
+  const handleWorkspaceSwitcherClick = (event) => {
+    setWorkspaceSwitcherAnchor(workspaceSwitcherAnchor ? null : event.currentTarget);
+  };
+
+  const handleWorkspaceSwitcherClose = () => {
+    setWorkspaceSwitcherAnchor(null);
+  };
+
+  const handleWorkspaceSelect = (workspace) => {
+    setCurrentWorkspace(workspace);
+    handleWorkspaceSwitcherClose();
+  };
+
   return (
     <Box sx={{ display: 'flex', height: '100vh', width: '100%' }}>
       {/* Hero Sidebar */}
@@ -260,50 +281,137 @@ function UserPage() {
           },
         }}
       >
-        <Tooltip title="Create Workspace" placement="right">
-          <IconButton
-            onClick={() => setIsCreateWorkspaceOpen(true)}
-            sx={{ 
-              width: 48,
-              height: 48,
-              borderRadius: 2,
-              backgroundColor: 'grey.800',
-              color: 'grey.100',
-              '&:hover': {
-                backgroundColor: 'grey.700',
-              },
-              mb: 1,
-            }}
-          >
-            <AddIcon />
-          </IconButton>
-        </Tooltip>
-        <Divider sx={{ width: '80%', borderColor: 'grey.800' }} />
-        
-        {/* Workspace List */}
-        <Stack spacing={1} sx={{ width: '100%', alignItems: 'center', mt: 1 }}>
-          {workspaces.map((workspace) => (
-            <Tooltip key={workspace.id} title={workspace.name} placement="right">
+        {workspaces.length === 0 ? (
+          // Show create workspace button if user has no workspaces
+          <Tooltip title="Create Workspace" placement="right">
+            <IconButton
+              onClick={() => setIsCreateWorkspaceOpen(true)}
+              sx={{ 
+                width: 48,
+                height: 48,
+                borderRadius: 2,
+                backgroundColor: 'grey.800',
+                color: 'grey.100',
+                '&:hover': {
+                  backgroundColor: 'grey.700',
+                },
+                mb: 1,
+              }}
+            >
+              <AddIcon />
+            </IconButton>
+          </Tooltip>
+        ) : (
+          // Show current workspace button with dropdown
+          <>
+            <Tooltip title={currentWorkspace?.name || ''} placement="right">
               <IconButton
-                onClick={() => setCurrentWorkspace(workspace)}
+                onClick={handleWorkspaceSwitcherClick}
                 sx={{ 
                   width: 48,
                   height: 48,
                   borderRadius: 2,
-                  backgroundColor: currentWorkspace?.id === workspace.id ? 'primary.main' : 'grey.800',
+                  backgroundColor: 'primary.main',
                   color: 'grey.100',
                   fontSize: '1.2rem',
                   fontWeight: 'bold',
                   '&:hover': {
-                    backgroundColor: currentWorkspace?.id === workspace.id ? 'primary.dark' : 'grey.700',
+                    backgroundColor: 'primary.dark',
                   },
+                  mb: 1,
                 }}
               >
-                {workspace.name.charAt(0).toUpperCase()}
+                {currentWorkspace?.name?.charAt(0).toUpperCase()}
               </IconButton>
             </Tooltip>
-          ))}
-        </Stack>
+            <Popper
+              open={Boolean(workspaceSwitcherAnchor)}
+              anchorEl={workspaceSwitcherAnchor}
+              placement="right-start"
+              transition
+              sx={{ zIndex: (theme) => theme.zIndex.drawer + 3 }}
+            >
+              {({ TransitionProps }) => (
+                <Grow {...TransitionProps}>
+                  <Paper 
+                    sx={{ 
+                      width: 200,
+                      maxHeight: 'calc(100vh - 100px)',
+                      overflow: 'auto',
+                      mt: 1,
+                      ml: 1,
+                      backgroundColor: 'grey.800',
+                    }}
+                  >
+                    <ClickAwayListener onClickAway={handleWorkspaceSwitcherClose}>
+                      <MenuList>
+                        <Typography
+                          variant="subtitle2"
+                          sx={{
+                            px: 2,
+                            py: 1,
+                            fontWeight: 'bold',
+                            color: 'grey.400',
+                            fontSize: '0.75rem',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          Workspaces
+                        </Typography>
+                        {workspaces.map((workspace) => (
+                          <MenuItem
+                            key={workspace.id}
+                            onClick={() => handleWorkspaceSelect(workspace)}
+                            sx={{ 
+                              color: 'grey.400',
+                              fontSize: '0.875rem',
+                              py: 0.75,
+                              '&:hover': {
+                                backgroundColor: 'grey.700',
+                              },
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                            }}
+                          >
+                            {workspace.name}
+                            {workspace.id === currentWorkspace?.id && (
+                              <CheckIcon sx={{ ml: 1, fontSize: '1rem' }} />
+                            )}
+                          </MenuItem>
+                        ))}
+                        <MenuItem
+                          onClick={() => {
+                            handleWorkspaceSwitcherClose();
+                            setIsCreateWorkspaceOpen(true);
+                          }}
+                          sx={{ 
+                            color: 'grey.400',
+                            fontSize: '0.875rem',
+                            py: 0.75,
+                            '&:hover': {
+                              backgroundColor: 'grey.700',
+                            },
+                            borderTop: 1,
+                            borderColor: 'grey.700',
+                            display: 'flex',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <ListItemIcon sx={{ color: 'grey.400', minWidth: 36 }}>
+                            <AddIcon fontSize="small" />
+                          </ListItemIcon>
+                          Create Workspace
+                        </MenuItem>
+                      </MenuList>
+                    </ClickAwayListener>
+                  </Paper>
+                </Grow>
+              )}
+            </Popper>
+          </>
+        )}
+        <Divider sx={{ width: '80%', borderColor: 'grey.800' }} />
       </Drawer>
 
       {/* Channel and DM Sidebar */}
