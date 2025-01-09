@@ -115,7 +115,8 @@ export default function Messaging({ channelId, channelName, workspaceId }) {
         overflowY: 'auto', 
         padding: '20px',
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        backgroundColor: '#fff'
       }}>
         {messages.map((msg) => (
           <div key={msg.id} className="message-container">

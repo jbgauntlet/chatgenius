@@ -159,7 +159,8 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
         overflowY: 'auto', 
         padding: '20px',
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        backgroundColor: '#fff'
       }}>
         {messages.map((msg) => (
           <div key={msg.id} className="message-container">
