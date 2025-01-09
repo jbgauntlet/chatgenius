@@ -26,6 +26,7 @@ import {
   Grow,
   ClickAwayListener,
   MenuList,
+  ListItemAvatar,
 } from '@mui/material';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
@@ -78,6 +79,10 @@ function UserPage() {
   const [saveError, setSaveError] = useState(null);
   const [currentUserRole, setCurrentUserRole] = useState(null);
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
+  const [workspaceMembers, setWorkspaceMembers] = useState([]);
+  const [isInviteMembersOpen, setIsInviteMembersOpen] = useState(false);
+  const [inviteLink, setInviteLink] = useState('');
+  const [activeInvites, setActiveInvites] = useState([]);
 
   useEffect(() => {
     fetchUserData();
@@ -92,6 +97,13 @@ function UserPage() {
       fetchUserWorkspaceRole();
     }
   }, [currentWorkspace, currentUser]);
+
+  // Add effect to fetch workspace members when workspace changes
+  useEffect(() => {
+    if (currentWorkspace) {
+      fetchWorkspaceMembers();
+    }
+  }, [currentWorkspace]);
 
   const fetchUserData = async () => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -201,6 +213,28 @@ function UserPage() {
       console.error('Error fetching user role:', error);
     } else {
       setCurrentUserRole(data.role);
+    }
+  };
+
+  const fetchWorkspaceMembers = async () => {
+    if (!currentWorkspace) return;
+
+    const { data, error } = await supabase
+      .from('workspace_memberships')
+      .select(`
+        role,
+        users (
+          id,
+          name
+        )
+      `)
+      .eq('workspace_id', currentWorkspace.id);
+
+    if (error) {
+      console.error('Error fetching workspace members:', error);
+    } else {
+      console.log('Workspace members:', data);
+      setWorkspaceMembers(data);
     }
   };
 
@@ -389,6 +423,103 @@ function UserPage() {
   const handleUserMenuClose = () => {
     setUserMenuAnchor(null);
   };
+
+  const handleRemoveMember = async (memberId) => {
+    if (!currentWorkspace || currentUserRole !== 'owner') return;
+
+    try {
+      const { error } = await supabase
+        .from('workspace_memberships')
+        .delete()
+        .eq('workspace_id', currentWorkspace.id)
+        .eq('user_id', memberId);
+
+      if (error) throw error;
+
+      // Update the local state to remove the member
+      setWorkspaceMembers(prev => 
+        prev.filter(member => member.users.id !== memberId)
+      );
+    } catch (error) {
+      console.error('Error removing member:', error);
+      // You might want to show an error message to the user here
+    }
+  };
+
+  const handleGenerateInviteLink = async () => {
+    if (!currentWorkspace) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('workspace_invites')
+        .insert([{ 
+          workspace_id: currentWorkspace.id,
+          created_by: currentUser.id,
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Create the invite link using the invite ID
+      const inviteUrl = `${window.location.origin}/invite/${data.id}`;
+      setInviteLink(inviteUrl);
+      
+      // Refresh the active invites list
+      fetchActiveInvites();
+    } catch (error) {
+      console.error('Error generating invite link:', error);
+    }
+  };
+
+  const fetchActiveInvites = async () => {
+    if (!currentWorkspace) return;
+
+    const { data, error } = await supabase
+      .from('workspace_invites')
+      .select(`
+        id,
+        created_at,
+        expires_at,
+        users:created_by (
+          name
+        )
+      `)
+      .eq('workspace_id', currentWorkspace.id)
+      .eq('active', true)
+      .is('used_at', null)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching invites:', error);
+    } else {
+      setActiveInvites(data);
+    }
+  };
+
+  const handleRevokeInvite = async (inviteId) => {
+    try {
+      const { error } = await supabase
+        .from('workspace_invites')
+        .update({ active: false })
+        .eq('id', inviteId);
+
+      if (error) throw error;
+
+      // Update local state to remove the revoked invite
+      setActiveInvites(prev => prev.filter(invite => invite.id !== inviteId));
+    } catch (error) {
+      console.error('Error revoking invite:', error);
+    }
+  };
+
+  // Fetch active invites when the modal opens
+  useEffect(() => {
+    if (isInviteMembersOpen) {
+      fetchActiveInvites();
+    }
+  }, [isInviteMembersOpen]);
 
   return (
     <Box sx={{ 
@@ -1447,48 +1578,135 @@ function UserPage() {
           </Box>
 
           <Stack spacing={3}>
+            {/* General Settings Section */}
             <Box>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                Workspace Name
-              </Typography>
-              <TextField
-                fullWidth
-                size="small"
-                value={workspaceChanges.name}
-                onChange={handleWorkspaceChange('name')}
+              <Typography
+                variant="subtitle2"
                 sx={{
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: 'grey.100',
-                  },
+                  color: 'grey.700',
+                  fontSize: '0.75rem',
+                  fontWeight: 'bold',
+                  textTransform: 'uppercase',
+                  mb: 2,
                 }}
-              />
+              >
+                General Settings
+              </Typography>
+
+              <Stack spacing={3}>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                    Workspace Name
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    value={workspaceChanges.name}
+                    onChange={handleWorkspaceChange('name')}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: 'grey.100',
+                      },
+                    }}
+                  />
+                </Box>
+
+                <Box>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                    Description
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    multiline
+                    rows={3}
+                    placeholder="Add a description for your workspace"
+                    value={workspaceChanges.description}
+                    onChange={handleWorkspaceChange('description')}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: 'grey.100',
+                      },
+                    }}
+                  />
+                  <Typography
+                    variant="caption"
+                    sx={{ mt: 0.5, display: 'block', color: 'grey.600' }}
+                  >
+                    Let people know what this workspace is about.
+                  </Typography>
+                </Box>
+              </Stack>
             </Box>
 
+            <Divider />
+
+            {/* Members Section */}
             <Box>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                Description
-              </Typography>
-              <TextField
-                fullWidth
-                size="small"
-                multiline
-                rows={3}
-                placeholder="Add a description for your workspace"
-                value={workspaceChanges.description}
-                onChange={handleWorkspaceChange('description')}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: 'grey.100',
-                  },
-                }}
-              />
               <Typography
-                variant="caption"
-                sx={{ mt: 0.5, display: 'block', color: 'grey.600' }}
+                variant="subtitle2"
+                sx={{
+                  color: 'grey.700',
+                  fontSize: '0.75rem',
+                  fontWeight: 'bold',
+                  textTransform: 'uppercase',
+                  mb: 2,
+                }}
               >
-                Let people know what this workspace is about.
+                Members
               </Typography>
+
+              <Stack spacing={2}>
+                {/* Members List */}
+                <List 
+                  sx={{ 
+                    bgcolor: 'grey.100', 
+                    borderRadius: 1,
+                    maxHeight: 300,
+                    overflow: 'auto',
+                  }}
+                >
+                  {workspaceMembers.map((member) => (
+                    <ListItem
+                      key={member.users.id}
+                      secondaryAction={
+                        currentUserRole === 'owner' && member.users.id !== currentUser?.id && (
+                          <IconButton 
+                            edge="end" 
+                            size="small"
+                            onClick={() => handleRemoveMember(member.users.id)}
+                          >
+                            <CloseIcon fontSize="small" />
+                          </IconButton>
+                        )
+                      }
+                    >
+                      <ListItemAvatar>
+                        <Avatar sx={{ bgcolor: 'primary.main' }}>
+                          {member.users.name.charAt(0).toUpperCase()}
+                        </Avatar>
+                      </ListItemAvatar>
+                      <ListItemText
+                        primary={member.users.name}
+                        secondary={member.role.charAt(0).toUpperCase() + member.role.slice(1)}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+
+                {/* Invite Members Button */}
+                <Button
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  sx={{ alignSelf: 'flex-start' }}
+                  onClick={() => setIsInviteMembersOpen(true)}
+                >
+                  Invite Members
+                </Button>
+              </Stack>
             </Box>
+
+            <Divider />
 
             {/* Save Button and Error Message */}
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1, mt: 2 }}>
@@ -1505,6 +1723,128 @@ function UserPage() {
               >
                 {isSaving ? 'Saving...' : 'Save Changes'}
               </Button>
+            </Box>
+          </Stack>
+        </Paper>
+      </Modal>
+
+      {/* Invite Members Modal */}
+      <Modal
+        open={isInviteMembersOpen}
+        onClose={() => setIsInviteMembersOpen(false)}
+        aria-labelledby="invite-members-modal"
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Paper
+          sx={{
+            width: 500,
+            maxWidth: '90%',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            p: 3,
+          }}
+        >
+          <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6">
+              Invite Members
+            </Typography>
+            <IconButton onClick={() => setIsInviteMembersOpen(false)} sx={{ color: 'grey.500' }}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+
+          <Stack spacing={3}>
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 2 }}>
+                Generate an invite link to share with others
+              </Typography>
+              
+              {inviteLink ? (
+                <Box sx={{ 
+                  display: 'flex', 
+                  gap: 1,
+                  alignItems: 'center',
+                  bgcolor: 'grey.100',
+                  p: 2,
+                  borderRadius: 1,
+                }}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    value={inviteLink}
+                    InputProps={{
+                      readOnly: true,
+                    }}
+                  />
+                  <Button
+                    variant="contained"
+                    onClick={() => {
+                      navigator.clipboard.writeText(inviteLink);
+                      // TODO: Show a copy success message
+                    }}
+                  >
+                    Copy
+                  </Button>
+                </Box>
+              ) : (
+                <Button
+                  variant="contained"
+                  onClick={handleGenerateInviteLink}
+                  startIcon={<AddIcon />}
+                >
+                  Generate Invite Link
+                </Button>
+              )}
+            </Box>
+
+            <Divider />
+
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 2 }}>
+                Active Invites
+              </Typography>
+              {activeInvites.length > 0 ? (
+                <List sx={{ bgcolor: 'grey.100', borderRadius: 1 }}>
+                  {activeInvites.map((invite) => (
+                    <ListItem
+                      key={invite.id}
+                      secondaryAction={
+                        <IconButton 
+                          edge="end" 
+                          size="small"
+                          onClick={() => handleRevokeInvite(invite.id)}
+                          sx={{ color: 'error.main' }}
+                        >
+                          <CloseIcon fontSize="small" />
+                        </IconButton>
+                      }
+                    >
+                      <ListItemText
+                        primary={
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="body2">
+                              Created by {invite.users.name}
+                            </Typography>
+                          </Box>
+                        }
+                        secondary={
+                          <Typography variant="caption" color="text.secondary">
+                            Expires {new Date(invite.expires_at).toLocaleDateString()}
+                          </Typography>
+                        }
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              ) : (
+                <Typography color="text.secondary" variant="body2">
+                  No active invites
+                </Typography>
+              )}
             </Box>
           </Stack>
         </Paper>

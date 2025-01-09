@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Authentication from './pages/Authentication';
 import UserPage from './pages/UserPage';
 import SignUp from './pages/SignUp';
+import InvitePage from './pages/InvitePage';
 
 function App() {
   return (
@@ -16,6 +17,9 @@ function App() {
 
         {/* User Page */}
         <Route path="/user" element={<UserPage />} />
+
+        {/* Invite Page */}
+        <Route path="/invite/:id" element={<InvitePage />} />
       </Routes>
     </Router>
   );
