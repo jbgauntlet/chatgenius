@@ -37,7 +37,7 @@ import { supabase } from '../supabaseClient';
 import Messaging from '../components/Messaging';
 import DirectMessaging from '../components/DirectMessaging';
 import SearchIcon from '@mui/icons-material/Search';
-import SettingsIcon from '@mui/icons-material/Settings';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import LogoutIcon from '@mui/icons-material/Logout';
 import CloseIcon from '@mui/icons-material/Close';
 import NotificationsIcon from '@mui/icons-material/NotificationsOutlined';
@@ -65,7 +65,10 @@ function UserPage() {
   const [workspaces, setWorkspaces] = useState([]);
   const [currentWorkspace, setCurrentWorkspace] = useState(null);
   const [workspaceSwitcherAnchor, setWorkspaceSwitcherAnchor] = useState(null);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [selectedHeroButton, setSelectedHeroButton] = useState('home');
+  const [workspaceMenuAnchor, setWorkspaceMenuAnchor] = useState(null);
+  const [isWorkspaceSettingsOpen, setIsWorkspaceSettingsOpen] = useState(false);
   const [workspaceChanges, setWorkspaceChanges] = useState({
     name: '',
     description: ''
@@ -74,7 +77,7 @@ function UserPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [currentUserRole, setCurrentUserRole] = useState(null);
-  const [selectedHeroButton, setSelectedHeroButton] = useState('home');
+  const [userMenuAnchor, setUserMenuAnchor] = useState(null);
 
   useEffect(() => {
     fetchUserData();
@@ -82,6 +85,13 @@ function UserPage() {
     fetchChannels();
     fetchUsers();
   }, []);
+
+  // Add effect to fetch role when workspace changes
+  useEffect(() => {
+    if (currentWorkspace && currentUser) {
+      fetchUserWorkspaceRole();
+    }
+  }, [currentWorkspace, currentUser]);
 
   const fetchUserData = async () => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -174,6 +184,23 @@ function UserPage() {
       if (!currentWorkspace && workspaceList.length > 0) {
         setCurrentWorkspace(workspaceList[0]);
       }
+    }
+  };
+
+  const fetchUserWorkspaceRole = async () => {
+    if (!currentWorkspace || !currentUser) return;
+
+    const { data, error } = await supabase
+      .from('workspace_memberships')
+      .select('role')
+      .eq('workspace_id', currentWorkspace.id)
+      .eq('user_id', currentUser.id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching user role:', error);
+    } else {
+      setCurrentUserRole(data.role);
     }
   };
 
@@ -283,22 +310,36 @@ function UserPage() {
     handleWorkspaceSwitcherClose();
   };
 
-  const handleSettingsClick = () => {
-    setIsSettingsOpen(!isSettingsOpen);
+  const handleHelpClick = () => {
+    setIsHelpOpen(!isHelpOpen);
   };
 
-  const handleSettingsClose = () => {
-    setIsSettingsOpen(false);
+  const handleHelpClose = () => {
+    setIsHelpOpen(false);
   };
 
-  // Reset changes when workspace changes or panel closes
-  useEffect(() => {
+  const handleWorkspaceMenuClick = (event) => {
+    setWorkspaceMenuAnchor(event.currentTarget);
+  };
+
+  const handleWorkspaceMenuClose = () => {
+    setWorkspaceMenuAnchor(null);
+  };
+
+  const handleWorkspaceSettingsOpen = () => {
     setWorkspaceChanges({
       name: currentWorkspace?.name || '',
       description: currentWorkspace?.description || ''
     });
+    setIsWorkspaceSettingsOpen(true);
+    handleWorkspaceMenuClose();
+  };
+
+  const handleWorkspaceSettingsClose = () => {
+    setIsWorkspaceSettingsOpen(false);
     setIsWorkspaceEdited(false);
-  }, [currentWorkspace, isSettingsOpen]);
+    setSaveError(null);
+  };
 
   const handleWorkspaceChange = (field) => (e) => {
     const newValue = e.target.value;
@@ -332,6 +373,7 @@ function UserPage() {
         prev.map(w => w.id === data.id ? data : w)
       );
       setIsWorkspaceEdited(false);
+      handleWorkspaceSettingsClose();
     } catch (error) {
       console.error('Error updating workspace:', error);
       setSaveError('Failed to save changes. Please try again.');
@@ -340,29 +382,13 @@ function UserPage() {
     }
   };
 
-  const fetchUserWorkspaceRole = async () => {
-    if (!currentWorkspace || !currentUser) return;
-
-    const { data, error } = await supabase
-      .from('workspace_memberships')
-      .select('role')
-      .eq('workspace_id', currentWorkspace.id)
-      .eq('user_id', currentUser.id)
-      .single();
-
-    if (error) {
-      console.error('Error fetching user role:', error);
-    } else {
-      setCurrentUserRole(data.role);
-    }
+  const handleUserMenuClick = (event) => {
+    setUserMenuAnchor(event.currentTarget);
   };
 
-  // Add effect to fetch role when workspace changes
-  useEffect(() => {
-    if (currentWorkspace && currentUser) {
-      fetchUserWorkspaceRole();
-    }
-  }, [currentWorkspace, currentUser]);
+  const handleUserMenuClose = () => {
+    setUserMenuAnchor(null);
+  };
 
   return (
     <Box sx={{ 
@@ -428,10 +454,10 @@ function UserPage() {
             </Box>
           </Box>
 
-          {/* Right section - Settings */}
+          {/* Right section - Help */}
           <Box sx={{ display: 'flex', alignItems: 'center', ml: 'auto' }}>
             <IconButton
-              onClick={handleSettingsClick}
+              onClick={handleHelpClick}
               disableRipple
               size="small"
               sx={{ 
@@ -442,7 +468,7 @@ function UserPage() {
                 p: 0.75,
               }}
             >
-              <SettingsIcon sx={{ fontSize: 18 }} />
+              <HelpOutlineIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Box>
         </Toolbar>
@@ -470,7 +496,7 @@ function UserPage() {
               flexDirection: 'column',
               alignItems: 'center',
               pt: 1,
-              pb: 1,
+              pb: 3,
               border: 'none',
               height: '100%',
             },
@@ -545,8 +571,8 @@ function UserPage() {
                           width: 200,
                           maxHeight: 'calc(100vh - 100px)',
                           overflow: 'auto',
-                          mt: 1,
-                          ml: 1,
+                          mt: 0.5,
+                          ml: 0.5,
                           backgroundColor: 'grey.800',
                         }}
                       >
@@ -871,32 +897,82 @@ function UserPage() {
             </Box>
           </Box>
 
-          {/* Bottom section with logout button */}
+          {/* Bottom section with user avatar */}
           <Box sx={{ mt: 'auto' }}>
-            <Tooltip title="Logout" placement="right">
-              <IconButton
-                onClick={handleLogout}
-                disableRipple
-                sx={{ 
-                  width: 36,
-                  height: 36,
-                  borderRadius: 1.5,
-                  backgroundColor: 'error.dark',
-                  color: 'error.contrastText',
-                  '&:hover': {
-                    backgroundColor: 'error.main',
-                    '& > svg': {
-                      transform: 'scale(1.15)',
-                    },
-                  },
-                  '& > svg': {
-                    transition: 'transform 0.2s ease',
-                  },
-                }}
-              >
-                <LogoutIcon />
-              </IconButton>
-            </Tooltip>
+            <IconButton
+              onClick={handleUserMenuClick}
+              disableRipple
+              sx={{ 
+                width: 36,
+                height: 36,
+                borderRadius: 1.5,
+                backgroundColor: '#FF6B2C',
+                color: '#fff',
+                fontSize: '1.2rem',
+                fontWeight: 'bold',
+                '&:hover': {
+                  backgroundColor: '#E55A1F',
+                },
+              }}
+            >
+              {currentUser?.name?.charAt(0).toUpperCase()}
+            </IconButton>
+            <Popper
+              open={Boolean(userMenuAnchor)}
+              anchorEl={userMenuAnchor}
+              placement="right-start"
+              transition
+              sx={{ zIndex: (theme) => theme.zIndex.drawer + 3 }}
+            >
+              {({ TransitionProps }) => (
+                <Grow {...TransitionProps}>
+                  <Paper 
+                    sx={{ 
+                      width: 200,
+                      maxHeight: 'calc(100vh - 100px)',
+                      overflow: 'auto',
+                      mt: 0.5,
+                      ml: 0.5,
+                      backgroundColor: 'grey.800',
+                    }}
+                  >
+                    <ClickAwayListener onClickAway={handleUserMenuClose}>
+                      <MenuList>
+                        <Typography
+                          variant="subtitle2"
+                          sx={{
+                            px: 2,
+                            py: 1,
+                            fontWeight: 'bold',
+                            color: 'grey.400',
+                            fontSize: '0.75rem',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          {currentUser?.name}
+                        </Typography>
+                        <MenuItem
+                          onClick={() => {
+                            handleUserMenuClose();
+                            handleLogout();
+                          }}
+                          sx={{ 
+                            color: 'grey.400',
+                            fontSize: '0.875rem',
+                            py: 0.75,
+                            '&:hover': {
+                              backgroundColor: 'grey.700',
+                            },
+                          }}
+                        >
+                          Sign out
+                        </MenuItem>
+                      </MenuList>
+                    </ClickAwayListener>
+                  </Paper>
+                </Grow>
+              )}
+            </Popper>
           </Box>
         </Drawer>
 
@@ -907,8 +983,8 @@ function UserPage() {
           bgcolor: 'rgba(0, 0, 0, 0.2)',
           borderRadius: 2,
           overflow: 'hidden',
-          mr: 1,
-          mb: 1,
+          mr: '4px',
+          mb: '5px',
         }}>
           {/* Channel and DM Sidebar */}
           <Drawer
@@ -927,6 +1003,7 @@ function UserPage() {
                 flexDirection: 'column',
                 '& .MuiListItemText-primary': {
                   color: 'rgb(249, 237, 255)',
+                  fontSize: '15px',
                 },
                 '& .MuiListItemText-secondary': {
                   color: 'rgba(249, 237, 255, 0.7)',
@@ -947,20 +1024,73 @@ function UserPage() {
               flexDirection: 'column',
             }}>
               <List>
-                <ListItem>
-                  <Avatar 
-                    alt={currentUser?.name || 'User'} 
-                    src="/static/images/avatar/1.jpg"
-                    sx={{ bgcolor: 'primary.main' }}
-                  >
-                    {currentUser?.name?.charAt(0).toUpperCase()}
-                  </Avatar>
+                <ListItemButton onClick={handleWorkspaceMenuClick}>
                   <ListItemText 
-                    primary={currentUser?.name || 'Loading...'} 
-                    secondary="Online"
-                    sx={{ ml: 2 }}
+                    primary={currentWorkspace?.name || 'Select a workspace'} 
+                    sx={{ 
+                      ml: 2,
+                      '& .MuiListItemText-primary': {
+                        fontSize: '16px',
+                        fontWeight: 500,
+                      },
+                    }}
                   />
-                </ListItem>
+                </ListItemButton>
+                <Popper
+                  open={Boolean(workspaceMenuAnchor)}
+                  anchorEl={workspaceMenuAnchor}
+                  placement="right-start"
+                  transition
+                  sx={{ zIndex: (theme) => theme.zIndex.drawer + 3 }}
+                >
+                  {({ TransitionProps }) => (
+                    <Grow {...TransitionProps}>
+                      <Paper 
+                        sx={{ 
+                          width: 200,
+                          maxHeight: 'calc(100vh - 100px)',
+                          overflow: 'auto',
+                          mt: 0.5,
+                          ml: 0.5,
+                          backgroundColor: 'grey.800',
+                        }}
+                      >
+                        <ClickAwayListener onClickAway={handleWorkspaceMenuClose}>
+                          <MenuList>
+                            <Typography
+                              variant="subtitle2"
+                              sx={{
+                                px: 2,
+                                py: 1,
+                                fontWeight: 'bold',
+                                color: 'grey.400',
+                                fontSize: '0.75rem',
+                                textTransform: 'uppercase',
+                              }}
+                            >
+                              {currentWorkspace?.name}
+                            </Typography>
+                            {currentUserRole === 'owner' && (
+                              <MenuItem
+                                onClick={handleWorkspaceSettingsOpen}
+                                sx={{ 
+                                  color: 'grey.400',
+                                  fontSize: '0.875rem',
+                                  py: 0.75,
+                                  '&:hover': {
+                                    backgroundColor: 'grey.700',
+                                  },
+                                }}
+                              >
+                                Settings
+                              </MenuItem>
+                            )}
+                          </MenuList>
+                        </ClickAwayListener>
+                      </Paper>
+                    </Grow>
+                  )}
+                </Popper>
                 <Divider />
                 
                 <ListItemButton 
@@ -969,10 +1099,15 @@ function UserPage() {
                     '&:hover': {
                       backgroundColor: 'rgba(255, 255, 255, 0.1)',
                     },
+                    '& .MuiListItemText-primary': {
+                      fontSize: '15px',
+                    },
                   }}
                 >
+                  <Box sx={{ mr: 1.5 }}>
+                    {channelsOpen ? <ExpandLess /> : <ExpandMore />}
+                  </Box>
                   <ListItemText primary="Channels" />
-                  {channelsOpen ? <ExpandLess /> : <ExpandMore />}
                 </ListItemButton>
                 
                 <Collapse in={channelsOpen} timeout="auto" unmountOnExit>
@@ -1025,8 +1160,10 @@ function UserPage() {
                 </Collapse>
 
                 <ListItemButton onClick={handleDMsClick}>
+                  <Box sx={{ mr: 1.5 }}>
+                    {dmsOpen ? <ExpandLess /> : <ExpandMore />}
+                  </Box>
                   <ListItemText primary="Direct Messages" />
-                  {dmsOpen ? <ExpandLess /> : <ExpandMore />}
                 </ListItemButton>
 
                 <Collapse in={dmsOpen} timeout="auto" unmountOnExit>
@@ -1076,70 +1213,70 @@ function UserPage() {
           }}>
             {/* Main Content Area */}
             <Box sx={{ 
-              width: isSettingsOpen ? 'calc(100% - 400px)' : '100%',
+              width: isHelpOpen ? 'calc(100% - 400px)' : '100%',
               transition: 'width 0.3s ease',
               display: 'flex',
               flexDirection: 'column',
               height: '100%',
               bgcolor: '#fff',
             }}>
-          {(selectedChannel || selectedUser) && (
+              {(selectedChannel || selectedUser) && (
                 <Box sx={{ 
                   display: 'flex', 
                   flexDirection: 'column',
                   height: '100%',
                 }}>
                   {/* Header */}
-              <Box sx={{ 
-                p: 2, 
-                borderBottom: 1, 
-                borderColor: 'divider',
-                backgroundColor: 'background.paper',
+                  <Box sx={{ 
+                    p: 2, 
+                    borderBottom: 1, 
+                    borderColor: 'divider',
+                    backgroundColor: 'background.paper',
                     flexShrink: 0,
-              }}>
-                {selectedChannel ? (
-                  <>
-                    <Typography variant="h6"># {selectedChannel.name}</Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      Welcome to the {selectedChannel.name} channel!
-                    </Typography>
-                  </>
-                ) : (
-                  <>
-                    <Typography variant="h6">{selectedUser.name}</Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      Direct message with {selectedUser.name}
-                    </Typography>
-                  </>
-                )}
-              </Box>
+                  }}>
+                    {selectedChannel ? (
+                      <>
+                        <Typography variant="h6"># {selectedChannel.name}</Typography>
+                        <Typography variant="body2" color="textSecondary">
+                          Welcome to the {selectedChannel.name} channel!
+                        </Typography>
+                      </>
+                    ) : (
+                      <>
+                        <Typography variant="h6">{selectedUser.name}</Typography>
+                        <Typography variant="body2" color="textSecondary">
+                          Direct message with {selectedUser.name}
+                        </Typography>
+                      </>
+                    )}
+                  </Box>
 
-                {/* Messages Area */}
-                <Box sx={{ flexGrow: 1, minHeight: 0, overflow: 'hidden' }}>
-                {selectedChannel ? (
-                  <Messaging 
-                    channelId={selectedChannel.id} 
-                    channelName={selectedChannel.name}
+                  {/* Messages Area */}
+                  <Box sx={{ flexGrow: 1, minHeight: 0, overflow: 'hidden' }}>
+                    {selectedChannel ? (
+                      <Messaging 
+                        channelId={selectedChannel.id} 
+                        channelName={selectedChannel.name}
                         workspaceId={currentWorkspace.id}
-                  />
-                ) : (
-                  <DirectMessaging 
-                    recipientId={selectedUser.id}
-                    recipientName={selectedUser.name}
+                      />
+                    ) : (
+                      <DirectMessaging 
+                        recipientId={selectedUser.id}
+                        recipientName={selectedUser.name}
                         workspaceId={currentWorkspace.id}
-                  />
-                )}
-              </Box>
-            </Box>
-          )}
+                      />
+                    )}
+                  </Box>
+                </Box>
+              )}
             </Box>
 
-            {/* Settings Panel */}
+            {/* Help Panel */}
             <Box
               sx={{
                 width: 400,
                 bgcolor: 'background.paper',
-                transform: isSettingsOpen ? 'translateX(0)' : 'translateX(100%)',
+                transform: isHelpOpen ? 'translateX(0)' : 'translateX(100%)',
                 transition: 'transform 0.3s ease',
                 position: 'absolute',
                 right: 0,
@@ -1151,7 +1288,7 @@ function UserPage() {
                 borderColor: 'divider',
               }}
             >
-              {/* Settings Header */}
+              {/* Help Header */}
               <Box sx={{ 
                 p: 2, 
                 borderBottom: 1, 
@@ -1161,152 +1298,22 @@ function UserPage() {
                 justifyContent: 'space-between',
               }}>
                 <Typography variant="h6">
-                  Workspace Settings
+                  Help Panel
                 </Typography>
-                <IconButton onClick={handleSettingsClose} sx={{ color: 'grey.500' }}>
+                <IconButton onClick={handleHelpClose} sx={{ color: 'grey.500' }}>
                   <CloseIcon />
                 </IconButton>
               </Box>
 
-              {/* Settings Content */}
+              {/* Help Content */}
               <Box sx={{ 
                 flexGrow: 1,
                 overflow: 'auto',
                 p: 3,
               }}>
-                {/* General Settings Section */}
-                <Box>
-                  <Typography
-                    variant="subtitle2"
-                    sx={{
-                      color: 'grey.700',
-                      fontSize: '0.75rem',
-                      fontWeight: 'bold',
-                      textTransform: 'uppercase',
-                      mb: 2,
-                    }}
-                  >
-                    General Settings
-                  </Typography>
-
-                  <Stack spacing={3}>
-                    <Box>
-                      <Typography
-                        variant="subtitle2"
-                        sx={{ mb: 1, color: currentUserRole === 'owner' ? 'grey.700' : 'grey.500' }}
-                      >
-                        Workspace Name
-                      </Typography>
-                      <TextField
-                        fullWidth
-                        size="small"
-                        value={workspaceChanges.name}
-                        onChange={handleWorkspaceChange('name')}
-                        disabled={currentUserRole !== 'owner'}
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            backgroundColor: currentUserRole === 'owner' ? 'grey.100' : 'grey.50',
-                            color: currentUserRole === 'owner' ? 'grey.900' : 'grey.600',
-                            '& fieldset': {
-                              borderColor: currentUserRole === 'owner' ? 'grey.300' : 'grey.200',
-                            },
-                            '&:hover fieldset': {
-                              borderColor: currentUserRole === 'owner' ? 'grey.400' : 'grey.200',
-                            },
-                            '&.Mui-focused fieldset': {
-                              borderColor: currentUserRole === 'owner' ? 'primary.main' : 'grey.200',
-                            },
-                            '&.Mui-disabled': {
-                              backgroundColor: 'grey.50',
-                              color: 'grey.600',
-                              '& fieldset': {
-                                borderColor: 'grey.200',
-                              },
-                            },
-                          },
-                        }}
-                      />
-                    </Box>
-
-                    <Box>
-                      <Typography
-                        variant="subtitle2"
-                        sx={{ mb: 1, color: currentUserRole === 'owner' ? 'grey.700' : 'grey.500' }}
-                      >
-                        Description
-                      </Typography>
-                      <TextField
-                        fullWidth
-                        size="small"
-                        multiline
-                        rows={3}
-                        placeholder={currentUserRole === 'owner' ? "Add a description for your workspace" : "No description provided"}
-                        value={workspaceChanges.description}
-                        onChange={handleWorkspaceChange('description')}
-                        disabled={currentUserRole !== 'owner'}
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            backgroundColor: currentUserRole === 'owner' ? 'grey.100' : 'grey.50',
-                            color: currentUserRole === 'owner' ? 'grey.900' : 'grey.600',
-                            '& fieldset': {
-                              borderColor: currentUserRole === 'owner' ? 'grey.300' : 'grey.200',
-                            },
-                            '&:hover fieldset': {
-                              borderColor: currentUserRole === 'owner' ? 'grey.400' : 'grey.200',
-                            },
-                            '&.Mui-focused fieldset': {
-                              borderColor: currentUserRole === 'owner' ? 'primary.main' : 'grey.200',
-                            },
-                            '&.Mui-disabled': {
-                              backgroundColor: 'grey.50',
-                              color: 'grey.600',
-                              '& fieldset': {
-                                borderColor: 'grey.200',
-                              },
-                            },
-                          },
-                          '& .MuiOutlinedInput-input::placeholder': {
-                            color: 'grey.500',
-                            opacity: 1,
-                          },
-                        }}
-                      />
-                      {currentUserRole === 'owner' && (
-                        <Typography
-                          variant="caption"
-                          sx={{ mt: 0.5, display: 'block', color: 'grey.600' }}
-                        >
-                          Let people know what this workspace is about.
-                        </Typography>
-                      )}
-                    </Box>
-
-                    {/* Save Button and Error Message */}
-                    {currentUserRole === 'owner' && (isWorkspaceEdited || saveError) && (
-                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1, mt: 2 }}>
-                        {saveError && (
-                          <Typography color="error" variant="caption">
-                            {saveError}
-                          </Typography>
-                        )}
-                        <Button
-                          variant="contained"
-                          onClick={handleSaveWorkspaceChanges}
-                          disabled={isSaving}
-                          sx={{ minWidth: 100 }}
-                        >
-                          {isSaving ? 'Saving...' : 'Save'}
-                        </Button>
-                      </Box>
-                    )}
-                  </Stack>
-                </Box>
-
-                <Divider sx={{ my: 4, borderColor: 'grey.200' }} />
-
-                {/* Placeholder for other sections */}
-                <Typography color="grey.600" align="center">
-                  More settings coming soon...
+                {/* Placeholder for help content */}
+                <Typography color="grey.600">
+                  Help content coming soon...
                 </Typography>
               </Box>
             </Box>
@@ -1404,6 +1411,99 @@ function UserPage() {
                 disabled={!newWorkspaceName.trim()}
               >
                 Create
+              </Button>
+            </Box>
+          </Stack>
+        </Paper>
+      </Modal>
+
+      {/* Workspace Settings Modal */}
+      <Modal
+        open={isWorkspaceSettingsOpen}
+        onClose={handleWorkspaceSettingsClose}
+        aria-labelledby="workspace-settings-modal"
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Paper
+          sx={{
+            width: 500,
+            maxWidth: '90%',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            p: 3,
+          }}
+        >
+          <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6">
+              Workspace Settings
+            </Typography>
+            <IconButton onClick={handleWorkspaceSettingsClose} sx={{ color: 'grey.500' }}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+
+          <Stack spacing={3}>
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                Workspace Name
+              </Typography>
+              <TextField
+                fullWidth
+                size="small"
+                value={workspaceChanges.name}
+                onChange={handleWorkspaceChange('name')}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: 'grey.100',
+                  },
+                }}
+              />
+            </Box>
+
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                Description
+              </Typography>
+              <TextField
+                fullWidth
+                size="small"
+                multiline
+                rows={3}
+                placeholder="Add a description for your workspace"
+                value={workspaceChanges.description}
+                onChange={handleWorkspaceChange('description')}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: 'grey.100',
+                  },
+                }}
+              />
+              <Typography
+                variant="caption"
+                sx={{ mt: 0.5, display: 'block', color: 'grey.600' }}
+              >
+                Let people know what this workspace is about.
+              </Typography>
+            </Box>
+
+            {/* Save Button and Error Message */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1, mt: 2 }}>
+              {saveError && (
+                <Typography color="error" variant="caption">
+                  {saveError}
+                </Typography>
+              )}
+              <Button
+                variant="contained"
+                onClick={handleSaveWorkspaceChanges}
+                disabled={!isWorkspaceEdited || isSaving}
+                sx={{ minWidth: 100 }}
+              >
+                {isSaving ? 'Saving...' : 'Save Changes'}
               </Button>
             </Box>
           </Stack>
