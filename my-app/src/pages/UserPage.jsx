@@ -379,11 +379,11 @@ function UserPage() {
         elevation={0}
         sx={{ 
           backgroundColor: 'transparent',
-          height: 40,
-          minHeight: 40,
+          height: '40px',
+          minHeight: '40px',
           '& .MuiToolbar-root': {
-            minHeight: 40,
-            height: 40,
+            minHeight: '40px',
+            height: '40px',
             padding: '0 16px',
           },
         }}
@@ -449,17 +449,21 @@ function UserPage() {
       </AppBar>
 
       {/* Main content container */}
-      <Box sx={{ display: 'flex', flexGrow: 1, minHeight: 0 }}>
+      <Box sx={{ 
+        display: 'flex', 
+        flexGrow: 1, 
+        minHeight: 0,
+      }}>
         {/* Hero Sidebar */}
         <Drawer
           variant="permanent"
           sx={{
-            width: 68,
+            width: '70px',
             flexShrink: 0,
             height: '100%',
             '& .MuiDrawer-paper': { 
               position: 'relative',
-              width: 68, 
+              width: '70px', 
               boxSizing: 'border-box',
               backgroundColor: 'transparent',
               display: 'flex',
@@ -896,356 +900,415 @@ function UserPage() {
           </Box>
         </Drawer>
 
-        {/* Channel and DM Sidebar */}
-      <Drawer
-        variant="permanent"
-        sx={{
-          width: 280,
-          flexShrink: 0,
-            height: '100%',
-            '& .MuiDrawer-paper': { 
-              position: 'relative',
-              width: 280, 
-              boxSizing: 'border-box',
-              borderLeft: 1,
-              borderRight: 1,
-              borderColor: 'divider',
-              bgcolor: 'background.paper',
+        {/* Rounded container for channel sidebar, content area, and settings */}
+        <Box sx={{ 
+          display: 'flex',
+          flexGrow: 1,
+          bgcolor: 'rgba(0, 0, 0, 0.2)',
+          borderRadius: 2,
+          overflow: 'hidden',
+          mr: 1,
+          mb: 1,
+        }}>
+          {/* Channel and DM Sidebar */}
+          <Drawer
+            variant="permanent"
+            sx={{
+              width: 280,
+              flexShrink: 0,
               height: '100%',
+              '& .MuiDrawer-paper': { 
+                position: 'relative',
+                width: 280, 
+                boxSizing: 'border-box',
+                bgcolor: 'rgba(249, 237, 255, 0.15)',
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                '& .MuiListItemText-primary': {
+                  color: 'rgb(249, 237, 255)',
+                },
+                '& .MuiListItemText-secondary': {
+                  color: 'rgba(249, 237, 255, 0.7)',
+                },
+                '& .MuiSvgIcon-root': {
+                  color: 'rgb(249, 237, 255)',
+                },
+                '& .MuiDivider-root': {
+                  borderColor: 'rgba(249, 237, 255, 0.2)',
+                },
+              },
+            }}
+          >
+            <Box sx={{ 
+              flexGrow: 1, 
+              overflow: 'auto',
               display: 'flex',
               flexDirection: 'column',
-            },
-          }}
-        >
-          <Box sx={{ 
-            flexGrow: 1, 
-            overflow: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-          }}>
-          <List>
-            <ListItem>
-              <Avatar 
-                alt={currentUser?.name || 'User'} 
-                src="/static/images/avatar/1.jpg"
-                sx={{ bgcolor: 'primary.main' }}
-              >
-                {currentUser?.name?.charAt(0).toUpperCase()}
-              </Avatar>
-              <ListItemText 
-                primary={currentUser?.name || 'Loading...'} 
-                secondary="Online"
-                sx={{ ml: 2 }}
-              />
-            </ListItem>
-            <Divider />
-            
-            <ListItemButton onClick={handleChannelsClick}>
-              <ListItemText primary="Channels" />
-              {channelsOpen ? <ExpandLess /> : <ExpandMore />}
-            </ListItemButton>
-            
-            <Collapse in={channelsOpen} timeout="auto" unmountOnExit>
-              <List component="div" disablePadding>
-                {channels.map((channel) => (
-                  <ListItemButton
-                    key={channel.id}
-                    onClick={() => handleChannelSelect(channel)}
-                    selected={selectedChannel?.id === channel.id}
-                    sx={{ pl: 4 }}
-                  >
-                    <ListItemIcon>
-                      <TagIcon fontSize="small" />
-                    </ListItemIcon>
-                    <ListItemText primary={channel.name} />
-                  </ListItemButton>
-                ))}
-                <ListItemButton
-                  onClick={() => setIsCreateChannelOpen(true)}
-                  sx={{ pl: 4 }}
-                >
-                  <ListItemIcon>
-                    <AddIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText primary="Add Channel" />
-                </ListItemButton>
-              </List>
-            </Collapse>
-
-            <ListItemButton onClick={handleDMsClick}>
-              <ListItemText primary="Direct Messages" />
-              {dmsOpen ? <ExpandLess /> : <ExpandMore />}
-            </ListItemButton>
-
-            <Collapse in={dmsOpen} timeout="auto" unmountOnExit>
-              <List component="div" disablePadding>
-                {users.map((user) => (
-                  <ListItemButton
-                    key={user.id}
-                    onClick={() => handleUserSelect(user)}
-                    selected={selectedUser?.id === user.id}
-                    sx={{ pl: 4 }}
-                  >
-                    <ListItemIcon>
-                      <Avatar 
-                        sx={{ width: 24, height: 24, fontSize: '0.75rem' }}
-                      >
-                        {user.name.charAt(0).toUpperCase()}
-                      </Avatar>
-                    </ListItemIcon>
-                    <ListItemText primary={user.name} />
-                  </ListItemButton>
-                ))}
-              </List>
-            </Collapse>
-          </List>
-        </Box>
-      </Drawer>
-
-        {/* Flex container for content and settings */}
-        <Box sx={{ 
-          display: 'flex', 
-          flexGrow: 1,
-          minHeight: 0,
-          position: 'relative',
-        }}>
-          {/* Main Content Area */}
-          <Box sx={{ 
-            width: isSettingsOpen ? 'calc(100% - 400px)' : '100%',
-            transition: 'width 0.3s ease',
-            display: 'flex',
-            flexDirection: 'column',
-            minHeight: 0,
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            bottom: 0,
-          }}>
-        {(selectedChannel || selectedUser) && (
-              <Box sx={{ 
-                display: 'flex', 
-                flexDirection: 'column',
-                height: '100%',
-              }}>
-                {/* Header */}
-            <Box sx={{ 
-              p: 2, 
-              borderBottom: 1, 
-              borderColor: 'divider',
-              backgroundColor: 'background.paper',
-                  flexShrink: 0,
             }}>
-              {selectedChannel ? (
-                <>
-                  <Typography variant="h6"># {selectedChannel.name}</Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Welcome to the {selectedChannel.name} channel!
-                  </Typography>
-                </>
-              ) : (
-                <>
-                  <Typography variant="h6">{selectedUser.name}</Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Direct message with {selectedUser.name}
-                  </Typography>
-                </>
-              )}
+              <List>
+                <ListItem>
+                  <Avatar 
+                    alt={currentUser?.name || 'User'} 
+                    src="/static/images/avatar/1.jpg"
+                    sx={{ bgcolor: 'primary.main' }}
+                  >
+                    {currentUser?.name?.charAt(0).toUpperCase()}
+                  </Avatar>
+                  <ListItemText 
+                    primary={currentUser?.name || 'Loading...'} 
+                    secondary="Online"
+                    sx={{ ml: 2 }}
+                  />
+                </ListItem>
+                <Divider />
+                
+                <ListItemButton 
+                  onClick={handleChannelsClick}
+                  sx={{
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    },
+                  }}
+                >
+                  <ListItemText primary="Channels" />
+                  {channelsOpen ? <ExpandLess /> : <ExpandMore />}
+                </ListItemButton>
+                
+                <Collapse in={channelsOpen} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding>
+                    {channels.map((channel) => (
+                      <ListItemButton
+                        key={channel.id}
+                        onClick={() => handleChannelSelect(channel)}
+                        selected={selectedChannel?.id === channel.id}
+                        sx={{ 
+                          pl: 4,
+                          '&:hover': {
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                          },
+                          '&.Mui-selected': {
+                            backgroundColor: 'rgb(249, 237, 255)',
+                            '& .MuiListItemText-primary': {
+                              color: '#461147',
+                            },
+                            '& .MuiSvgIcon-root': {
+                              color: '#461147',
+                            },
+                            '&:hover': {
+                              backgroundColor: 'rgb(249, 237, 255)',
+                            },
+                          },
+                        }}
+                      >
+                        <ListItemIcon sx={{ color: 'rgb(249, 237, 255)', minWidth: 36 }}>
+                          <TagIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText primary={channel.name} />
+                      </ListItemButton>
+                    ))}
+                    <ListItemButton
+                      onClick={() => setIsCreateChannelOpen(true)}
+                      sx={{ 
+                        pl: 4,
+                        '&:hover': {
+                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        },
+                      }}
+                    >
+                      <ListItemIcon sx={{ color: 'rgb(249, 237, 255)', minWidth: 36 }}>
+                        <AddIcon fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText primary="Add Channel" />
+                    </ListItemButton>
+                  </List>
+                </Collapse>
+
+                <ListItemButton onClick={handleDMsClick}>
+                  <ListItemText primary="Direct Messages" />
+                  {dmsOpen ? <ExpandLess /> : <ExpandMore />}
+                </ListItemButton>
+
+                <Collapse in={dmsOpen} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding>
+                    {users.map((user) => (
+                      <ListItemButton
+                        key={user.id}
+                        onClick={() => handleUserSelect(user)}
+                        selected={selectedUser?.id === user.id}
+                        sx={{ 
+                          pl: 4,
+                          '&:hover': {
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                          },
+                          '&.Mui-selected': {
+                            backgroundColor: 'rgb(249, 237, 255)',
+                            '& .MuiListItemText-primary': {
+                              color: '#461147',
+                            },
+                            '&:hover': {
+                              backgroundColor: 'rgb(249, 237, 255)',
+                            },
+                          },
+                        }}
+                      >
+                        <ListItemIcon sx={{ minWidth: 36 }}>
+                          <Avatar 
+                            sx={{ width: 24, height: 24, fontSize: '0.75rem' }}
+                          >
+                            {user.name.charAt(0).toUpperCase()}
+                          </Avatar>
+                        </ListItemIcon>
+                        <ListItemText primary={user.name} />
+                      </ListItemButton>
+                    ))}
+                  </List>
+                </Collapse>
+              </List>
             </Box>
+          </Drawer>
+
+          {/* Content and Settings Container */}
+          <Box sx={{ 
+            display: 'flex', 
+            flexGrow: 1,
+            position: 'relative',
+          }}>
+            {/* Main Content Area */}
+            <Box sx={{ 
+              width: isSettingsOpen ? 'calc(100% - 400px)' : '100%',
+              transition: 'width 0.3s ease',
+              display: 'flex',
+              flexDirection: 'column',
+              height: '100%',
+              bgcolor: '#fff',
+            }}>
+          {(selectedChannel || selectedUser) && (
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  height: '100%',
+                }}>
+                  {/* Header */}
+              <Box sx={{ 
+                p: 2, 
+                borderBottom: 1, 
+                borderColor: 'divider',
+                backgroundColor: 'background.paper',
+                    flexShrink: 0,
+              }}>
+                {selectedChannel ? (
+                  <>
+                    <Typography variant="h6"># {selectedChannel.name}</Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      Welcome to the {selectedChannel.name} channel!
+                    </Typography>
+                  </>
+                ) : (
+                  <>
+                    <Typography variant="h6">{selectedUser.name}</Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      Direct message with {selectedUser.name}
+                    </Typography>
+                  </>
+                )}
+              </Box>
 
                 {/* Messages Area */}
                 <Box sx={{ flexGrow: 1, minHeight: 0, overflow: 'hidden' }}>
-              {selectedChannel ? (
-                <Messaging 
-                  channelId={selectedChannel.id} 
-                  channelName={selectedChannel.name}
-                      workspaceId={currentWorkspace.id}
-                />
-              ) : (
-                <DirectMessaging 
-                  recipientId={selectedUser.id}
-                  recipientName={selectedUser.name}
-                      workspaceId={currentWorkspace.id}
-                />
-              )}
+                {selectedChannel ? (
+                  <Messaging 
+                    channelId={selectedChannel.id} 
+                    channelName={selectedChannel.name}
+                        workspaceId={currentWorkspace.id}
+                  />
+                ) : (
+                  <DirectMessaging 
+                    recipientId={selectedUser.id}
+                    recipientName={selectedUser.name}
+                        workspaceId={currentWorkspace.id}
+                  />
+                )}
+              </Box>
             </Box>
-          </Box>
-        )}
-          </Box>
-
-          {/* Settings Panel */}
-          <Box
-            sx={{
-              width: 400,
-              borderLeft: 1,
-              borderColor: 'divider',
-              bgcolor: 'background.paper',
-              transform: isSettingsOpen ? 'translateX(0)' : 'translateX(100%)',
-              transition: 'transform 0.3s ease',
-              position: 'absolute',
-              right: 0,
-              top: 0,
-              bottom: 0,
-              display: 'flex',
-              flexDirection: 'column',
-            }}
-          >
-            {/* Settings Header */}
-            <Box sx={{ 
-              p: 2, 
-              borderBottom: 1, 
-              borderColor: 'divider',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}>
-              <Typography variant="h6">
-                Workspace Settings
-              </Typography>
-              <IconButton onClick={handleSettingsClose} sx={{ color: 'grey.500' }}>
-                <CloseIcon />
-              </IconButton>
+          )}
             </Box>
 
-            {/* Settings Content */}
-            <Box sx={{ 
-              flexGrow: 1,
-              overflow: 'auto',
-              p: 3,
-            }}>
-              {/* General Settings Section */}
-              <Box>
-                <Typography
-                  variant="subtitle2"
-                  sx={{
-                    color: 'grey.700',
-                    fontSize: '0.75rem',
-                    fontWeight: 'bold',
-                    textTransform: 'uppercase',
-                    mb: 2,
-                  }}
-                >
-                  General Settings
+            {/* Settings Panel */}
+            <Box
+              sx={{
+                width: 400,
+                bgcolor: 'background.paper',
+                transform: isSettingsOpen ? 'translateX(0)' : 'translateX(100%)',
+                transition: 'transform 0.3s ease',
+                position: 'absolute',
+                right: 0,
+                top: 0,
+                bottom: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                borderLeft: 1,
+                borderColor: 'divider',
+              }}
+            >
+              {/* Settings Header */}
+              <Box sx={{ 
+                p: 2, 
+                borderBottom: 1, 
+                borderColor: 'divider',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}>
+                <Typography variant="h6">
+                  Workspace Settings
                 </Typography>
-
-                <Stack spacing={3}>
-                  <Box>
-                    <Typography
-                      variant="subtitle2"
-                      sx={{ mb: 1, color: currentUserRole === 'owner' ? 'grey.700' : 'grey.500' }}
-                    >
-                      Workspace Name
-                    </Typography>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      value={workspaceChanges.name}
-                      onChange={handleWorkspaceChange('name')}
-                      disabled={currentUserRole !== 'owner'}
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          backgroundColor: currentUserRole === 'owner' ? 'grey.100' : 'grey.50',
-                          color: currentUserRole === 'owner' ? 'grey.900' : 'grey.600',
-                          '& fieldset': {
-                            borderColor: currentUserRole === 'owner' ? 'grey.300' : 'grey.200',
-                          },
-                          '&:hover fieldset': {
-                            borderColor: currentUserRole === 'owner' ? 'grey.400' : 'grey.200',
-                          },
-                          '&.Mui-focused fieldset': {
-                            borderColor: currentUserRole === 'owner' ? 'primary.main' : 'grey.200',
-                          },
-                          '&.Mui-disabled': {
-                            backgroundColor: 'grey.50',
-                            color: 'grey.600',
-                            '& fieldset': {
-                              borderColor: 'grey.200',
-                            },
-                          },
-                        },
-                      }}
-                    />
-                  </Box>
-
-                  <Box>
-                    <Typography
-                      variant="subtitle2"
-                      sx={{ mb: 1, color: currentUserRole === 'owner' ? 'grey.700' : 'grey.500' }}
-                    >
-                      Description
-                    </Typography>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      multiline
-                      rows={3}
-                      placeholder={currentUserRole === 'owner' ? "Add a description for your workspace" : "No description provided"}
-                      value={workspaceChanges.description}
-                      onChange={handleWorkspaceChange('description')}
-                      disabled={currentUserRole !== 'owner'}
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          backgroundColor: currentUserRole === 'owner' ? 'grey.100' : 'grey.50',
-                          color: currentUserRole === 'owner' ? 'grey.900' : 'grey.600',
-                          '& fieldset': {
-                            borderColor: currentUserRole === 'owner' ? 'grey.300' : 'grey.200',
-                          },
-                          '&:hover fieldset': {
-                            borderColor: currentUserRole === 'owner' ? 'grey.400' : 'grey.200',
-                          },
-                          '&.Mui-focused fieldset': {
-                            borderColor: currentUserRole === 'owner' ? 'primary.main' : 'grey.200',
-                          },
-                          '&.Mui-disabled': {
-                            backgroundColor: 'grey.50',
-                            color: 'grey.600',
-                            '& fieldset': {
-                              borderColor: 'grey.200',
-                            },
-                          },
-                        },
-                        '& .MuiOutlinedInput-input::placeholder': {
-                          color: 'grey.500',
-                          opacity: 1,
-                        },
-                      }}
-                    />
-                    {currentUserRole === 'owner' && (
-                      <Typography
-                        variant="caption"
-                        sx={{ mt: 0.5, display: 'block', color: 'grey.600' }}
-                      >
-                        Let people know what this workspace is about.
-                      </Typography>
-                    )}
-                  </Box>
-
-                  {/* Save Button and Error Message */}
-                  {currentUserRole === 'owner' && (isWorkspaceEdited || saveError) && (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1, mt: 2 }}>
-                      {saveError && (
-                        <Typography color="error" variant="caption">
-                          {saveError}
-                        </Typography>
-                      )}
-                      <Button
-                        variant="contained"
-                        onClick={handleSaveWorkspaceChanges}
-                        disabled={isSaving}
-                        sx={{ minWidth: 100 }}
-                      >
-                        {isSaving ? 'Saving...' : 'Save'}
-                      </Button>
-                    </Box>
-                  )}
-                </Stack>
+                <IconButton onClick={handleSettingsClose} sx={{ color: 'grey.500' }}>
+                  <CloseIcon />
+                </IconButton>
               </Box>
 
-              <Divider sx={{ my: 4, borderColor: 'grey.200' }} />
+              {/* Settings Content */}
+              <Box sx={{ 
+                flexGrow: 1,
+                overflow: 'auto',
+                p: 3,
+              }}>
+                {/* General Settings Section */}
+                <Box>
+                  <Typography
+                    variant="subtitle2"
+                    sx={{
+                      color: 'grey.700',
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold',
+                      textTransform: 'uppercase',
+                      mb: 2,
+                    }}
+                  >
+                    General Settings
+                  </Typography>
 
-              {/* Placeholder for other sections */}
-              <Typography color="grey.600" align="center">
-                More settings coming soon...
-              </Typography>
+                  <Stack spacing={3}>
+                    <Box>
+                      <Typography
+                        variant="subtitle2"
+                        sx={{ mb: 1, color: currentUserRole === 'owner' ? 'grey.700' : 'grey.500' }}
+                      >
+                        Workspace Name
+                      </Typography>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        value={workspaceChanges.name}
+                        onChange={handleWorkspaceChange('name')}
+                        disabled={currentUserRole !== 'owner'}
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            backgroundColor: currentUserRole === 'owner' ? 'grey.100' : 'grey.50',
+                            color: currentUserRole === 'owner' ? 'grey.900' : 'grey.600',
+                            '& fieldset': {
+                              borderColor: currentUserRole === 'owner' ? 'grey.300' : 'grey.200',
+                            },
+                            '&:hover fieldset': {
+                              borderColor: currentUserRole === 'owner' ? 'grey.400' : 'grey.200',
+                            },
+                            '&.Mui-focused fieldset': {
+                              borderColor: currentUserRole === 'owner' ? 'primary.main' : 'grey.200',
+                            },
+                            '&.Mui-disabled': {
+                              backgroundColor: 'grey.50',
+                              color: 'grey.600',
+                              '& fieldset': {
+                                borderColor: 'grey.200',
+                              },
+                            },
+                          },
+                        }}
+                      />
+                    </Box>
+
+                    <Box>
+                      <Typography
+                        variant="subtitle2"
+                        sx={{ mb: 1, color: currentUserRole === 'owner' ? 'grey.700' : 'grey.500' }}
+                      >
+                        Description
+                      </Typography>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        multiline
+                        rows={3}
+                        placeholder={currentUserRole === 'owner' ? "Add a description for your workspace" : "No description provided"}
+                        value={workspaceChanges.description}
+                        onChange={handleWorkspaceChange('description')}
+                        disabled={currentUserRole !== 'owner'}
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            backgroundColor: currentUserRole === 'owner' ? 'grey.100' : 'grey.50',
+                            color: currentUserRole === 'owner' ? 'grey.900' : 'grey.600',
+                            '& fieldset': {
+                              borderColor: currentUserRole === 'owner' ? 'grey.300' : 'grey.200',
+                            },
+                            '&:hover fieldset': {
+                              borderColor: currentUserRole === 'owner' ? 'grey.400' : 'grey.200',
+                            },
+                            '&.Mui-focused fieldset': {
+                              borderColor: currentUserRole === 'owner' ? 'primary.main' : 'grey.200',
+                            },
+                            '&.Mui-disabled': {
+                              backgroundColor: 'grey.50',
+                              color: 'grey.600',
+                              '& fieldset': {
+                                borderColor: 'grey.200',
+                              },
+                            },
+                          },
+                          '& .MuiOutlinedInput-input::placeholder': {
+                            color: 'grey.500',
+                            opacity: 1,
+                          },
+                        }}
+                      />
+                      {currentUserRole === 'owner' && (
+                        <Typography
+                          variant="caption"
+                          sx={{ mt: 0.5, display: 'block', color: 'grey.600' }}
+                        >
+                          Let people know what this workspace is about.
+                        </Typography>
+                      )}
+                    </Box>
+
+                    {/* Save Button and Error Message */}
+                    {currentUserRole === 'owner' && (isWorkspaceEdited || saveError) && (
+                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1, mt: 2 }}>
+                        {saveError && (
+                          <Typography color="error" variant="caption">
+                            {saveError}
+                          </Typography>
+                        )}
+                        <Button
+                          variant="contained"
+                          onClick={handleSaveWorkspaceChanges}
+                          disabled={isSaving}
+                          sx={{ minWidth: 100 }}
+                        >
+                          {isSaving ? 'Saving...' : 'Save'}
+                        </Button>
+                      </Box>
+                    )}
+                  </Stack>
+                </Box>
+
+                <Divider sx={{ my: 4, borderColor: 'grey.200' }} />
+
+                {/* Placeholder for other sections */}
+                <Typography color="grey.600" align="center">
+                  More settings coming soon...
+                </Typography>
+              </Box>
             </Box>
           </Box>
         </Box>
