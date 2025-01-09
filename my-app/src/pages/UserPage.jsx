@@ -40,11 +40,14 @@ import SearchIcon from '@mui/icons-material/Search';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import CloseIcon from '@mui/icons-material/Close';
-import NotificationsIcon from '@mui/icons-material/Notifications';
-import HomeIcon from '@mui/icons-material/Home';
+import NotificationsIcon from '@mui/icons-material/NotificationsOutlined';
+import NotificationsFilledIcon from '@mui/icons-material/Notifications';
+import HomeIcon from '@mui/icons-material/HomeOutlined';
+import HomeFilledIcon from '@mui/icons-material/Home';
 import ChatIcon from '@mui/icons-material/Chat';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
-import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
+import ChatBubbleIcon from '@mui/icons-material/ChatBubbleOutline';
+import ChatBubbleFilledIcon from '@mui/icons-material/ChatBubble';
 
 function UserPage() {
   const navigate = useNavigate();
@@ -362,13 +365,20 @@ function UserPage() {
   }, [currentWorkspace, currentUser]);
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', overflow: 'hidden' }}>
+    <Box sx={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      height: '100vh', 
+      width: '100%', 
+      overflow: 'hidden',
+      background: 'linear-gradient(to bottom right, #461147, #39083B)',
+    }}>
       {/* Global Top Bar */}
       <AppBar 
         position="static" 
         elevation={0}
         sx={{ 
-          backgroundColor: 'grey.900',
+          backgroundColor: 'transparent',
           height: 40,
           minHeight: 40,
           '& .MuiToolbar-root': {
@@ -452,7 +462,7 @@ function UserPage() {
               position: 'relative',
               width: 68, 
               boxSizing: 'border-box',
-              backgroundColor: 'grey.900',
+              backgroundColor: 'transparent',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -608,7 +618,8 @@ function UserPage() {
           </Box>
 
           {/* Activity section */}
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', gap: 1.5 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', gap: 1.75 }}>
+            {/* Home button */}
             <Box 
               onClick={() => setSelectedHeroButton('home')}
               sx={{ 
@@ -618,11 +629,10 @@ function UserPage() {
                 cursor: 'pointer',
                 '&:hover': {
                   '& .MuiIconButton-root': {
-                    backgroundColor: 'grey.700',
-                    color: 'grey.100',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
                   },
                   '& .MuiTypography-root': {
-                    color: 'grey.100',
+                    color: '#fff',
                   },
                 },
                 '&:focus': {
@@ -636,10 +646,10 @@ function UserPage() {
                   width: 36,
                   height: 36,
                   borderRadius: 1.5,
-                  backgroundColor: selectedHeroButton === 'home' ? 'grey.700' : 'grey.900',
-                  color: selectedHeroButton === 'home' ? 'grey.100' : 'grey.400',
+                  backgroundColor: selectedHeroButton === 'home' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                  color: '#fff',
                   '&:hover': {
-                    backgroundColor: 'grey.700',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
                     '& > svg': {
                       transform: 'scale(1.15)',
                     },
@@ -649,86 +659,29 @@ function UserPage() {
                   },
                   '& > svg': {
                     transition: 'transform 0.2s ease',
+                    fontSize: 20,
                   },
                 }}
               >
-                <HomeIcon />
+                {selectedHeroButton === 'home' ? <HomeFilledIcon /> : <HomeIcon />}
               </IconButton>
               <Typography 
                 variant="caption" 
                 sx={{ 
-                  color: selectedHeroButton === 'home' ? 'grey.100' : 'grey.400', 
+                  color: '#fff',
                   fontSize: '0.6875rem', 
-                  mt: 0.5,
-                  fontWeight: 'bold',
+                  mt: 0.75,
+                  fontWeight: 500,
                   transition: 'color 0.2s',
                   userSelect: 'none',
+                  lineHeight: '12px',
                 }}
               >
                 Home
               </Typography>
             </Box>
 
-            <Box 
-              onClick={() => setSelectedHeroButton('activity')}
-              sx={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                alignItems: 'center',
-                cursor: 'pointer',
-                '&:hover': {
-                  '& .MuiIconButton-root': {
-                    backgroundColor: 'grey.700',
-                    color: 'grey.100',
-                  },
-                  '& .MuiTypography-root': {
-                    color: 'grey.100',
-                  },
-                },
-                '&:focus': {
-                  outline: 'none',
-                },
-              }}
-            >
-              <IconButton
-                disableRipple
-                sx={{ 
-                  width: 36,
-                  height: 36,
-                  borderRadius: 1.5,
-                  backgroundColor: selectedHeroButton === 'activity' ? 'grey.700' : 'grey.900',
-                  color: selectedHeroButton === 'activity' ? 'grey.100' : 'grey.400',
-                  '&:hover': {
-                    backgroundColor: 'grey.700',
-                    '& > svg': {
-                      transform: 'scale(1.15)',
-                    },
-                  },
-                  '&:focus': {
-                    outline: 'none',
-                  },
-                  '& > svg': {
-                    transition: 'transform 0.2s ease',
-                  },
-                }}
-              >
-                <NotificationsIcon />
-              </IconButton>
-              <Typography 
-                variant="caption" 
-                sx={{ 
-                  color: selectedHeroButton === 'activity' ? 'grey.100' : 'grey.400', 
-                  fontSize: '0.6875rem', 
-                  mt: 0.5,
-                  fontWeight: 'bold',
-                  transition: 'color 0.2s',
-                  userSelect: 'none',
-                }}
-              >
-                Activity
-              </Typography>
-            </Box>
-
+            {/* DMs button */}
             <Box 
               onClick={() => setSelectedHeroButton('dms')}
               sx={{ 
@@ -738,11 +691,10 @@ function UserPage() {
                 cursor: 'pointer',
                 '&:hover': {
                   '& .MuiIconButton-root': {
-                    backgroundColor: 'grey.700',
-                    color: 'grey.100',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
                   },
                   '& .MuiTypography-root': {
-                    color: 'grey.100',
+                    color: '#fff',
                   },
                 },
                 '&:focus': {
@@ -756,10 +708,10 @@ function UserPage() {
                   width: 36,
                   height: 36,
                   borderRadius: 1.5,
-                  backgroundColor: selectedHeroButton === 'dms' ? 'grey.700' : 'grey.900',
-                  color: selectedHeroButton === 'dms' ? 'grey.100' : 'grey.400',
+                  backgroundColor: selectedHeroButton === 'dms' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                  color: '#fff',
                   '&:hover': {
-                    backgroundColor: 'grey.700',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
                     '& > svg': {
                       transform: 'scale(1.15)',
                     },
@@ -769,28 +721,91 @@ function UserPage() {
                   },
                   '& > svg': {
                     transition: 'transform 0.2s ease',
+                    fontSize: 20,
                   },
                 }}
               >
-                <Box sx={{ position: 'relative', display: 'flex' }}>
-                  <ChatBubbleIcon />
-                </Box>
+                {selectedHeroButton === 'dms' ? <ChatBubbleFilledIcon /> : <ChatBubbleIcon />}
               </IconButton>
               <Typography 
                 variant="caption" 
                 sx={{ 
-                  color: selectedHeroButton === 'dms' ? 'grey.100' : 'grey.400', 
+                  color: '#fff',
                   fontSize: '0.6875rem', 
-                  mt: 0.5,
-                  fontWeight: 'bold',
+                  mt: 0.75,
+                  fontWeight: 500,
                   transition: 'color 0.2s',
                   userSelect: 'none',
+                  lineHeight: '12px',
                 }}
               >
                 DMs
               </Typography>
             </Box>
 
+            {/* Activity button */}
+            <Box 
+              onClick={() => setSelectedHeroButton('activity')}
+              sx={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center',
+                cursor: 'pointer',
+                '&:hover': {
+                  '& .MuiIconButton-root': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  },
+                  '& .MuiTypography-root': {
+                    color: '#fff',
+                  },
+                },
+                '&:focus': {
+                  outline: 'none',
+                },
+              }}
+            >
+              <IconButton
+                disableRipple
+                sx={{ 
+                  width: 36,
+                  height: 36,
+                  borderRadius: 1.5,
+                  backgroundColor: selectedHeroButton === 'activity' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                  color: '#fff',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    '& > svg': {
+                      transform: 'scale(1.15)',
+                    },
+                  },
+                  '&:focus': {
+                    outline: 'none',
+                  },
+                  '& > svg': {
+                    transition: 'transform 0.2s ease',
+                    fontSize: 20,
+                  },
+                }}
+              >
+                {selectedHeroButton === 'activity' ? <NotificationsFilledIcon /> : <NotificationsIcon />}
+              </IconButton>
+              <Typography 
+                variant="caption" 
+                sx={{ 
+                  color: '#fff',
+                  fontSize: '0.6875rem', 
+                  mt: 0.75,
+                  fontWeight: 500,
+                  transition: 'color 0.2s',
+                  userSelect: 'none',
+                  lineHeight: '12px',
+                }}
+              >
+                Activity
+              </Typography>
+            </Box>
+
+            {/* More button */}
             <Box 
               onClick={() => setSelectedHeroButton('more')}
               sx={{ 
@@ -800,11 +815,10 @@ function UserPage() {
                 cursor: 'pointer',
                 '&:hover': {
                   '& .MuiIconButton-root': {
-                    backgroundColor: 'grey.700',
-                    color: 'grey.100',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
                   },
                   '& .MuiTypography-root': {
-                    color: 'grey.100',
+                    color: '#fff',
                   },
                 },
                 '&:focus': {
@@ -818,10 +832,10 @@ function UserPage() {
                   width: 36,
                   height: 36,
                   borderRadius: 1.5,
-                  backgroundColor: selectedHeroButton === 'more' ? 'grey.700' : 'grey.900',
-                  color: selectedHeroButton === 'more' ? 'grey.100' : 'grey.400',
+                  backgroundColor: selectedHeroButton === 'more' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                  color: '#fff',
                   '&:hover': {
-                    backgroundColor: 'grey.700',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
                     '& > svg': {
                       transform: 'scale(1.15)',
                     },
@@ -831,6 +845,7 @@ function UserPage() {
                   },
                   '& > svg': {
                     transition: 'transform 0.2s ease',
+                    fontSize: 20,
                   },
                 }}
               >
@@ -839,12 +854,13 @@ function UserPage() {
               <Typography 
                 variant="caption" 
                 sx={{ 
-                  color: selectedHeroButton === 'more' ? 'grey.100' : 'grey.400', 
+                  color: '#fff',
                   fontSize: '0.6875rem', 
-                  mt: 0.5,
-                  fontWeight: 'bold',
+                  mt: 0.75,
+                  fontWeight: 500,
                   transition: 'color 0.2s',
                   userSelect: 'none',
+                  lineHeight: '12px',
                 }}
               >
                 More
