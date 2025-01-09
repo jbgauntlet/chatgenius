@@ -40,6 +40,11 @@ import SearchIcon from '@mui/icons-material/Search';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import CloseIcon from '@mui/icons-material/Close';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import HomeIcon from '@mui/icons-material/Home';
+import ChatIcon from '@mui/icons-material/Chat';
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
 
 function UserPage() {
   const navigate = useNavigate();
@@ -58,6 +63,15 @@ function UserPage() {
   const [currentWorkspace, setCurrentWorkspace] = useState(null);
   const [workspaceSwitcherAnchor, setWorkspaceSwitcherAnchor] = useState(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [workspaceChanges, setWorkspaceChanges] = useState({
+    name: '',
+    description: ''
+  });
+  const [isWorkspaceEdited, setIsWorkspaceEdited] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const [currentUserRole, setCurrentUserRole] = useState(null);
+  const [selectedHeroButton, setSelectedHeroButton] = useState('home');
 
   useEffect(() => {
     fetchUserData();
@@ -274,6 +288,79 @@ function UserPage() {
     setIsSettingsOpen(false);
   };
 
+  // Reset changes when workspace changes or panel closes
+  useEffect(() => {
+    setWorkspaceChanges({
+      name: currentWorkspace?.name || '',
+      description: currentWorkspace?.description || ''
+    });
+    setIsWorkspaceEdited(false);
+  }, [currentWorkspace, isSettingsOpen]);
+
+  const handleWorkspaceChange = (field) => (e) => {
+    const newValue = e.target.value;
+    setWorkspaceChanges(prev => ({
+      ...prev,
+      [field]: newValue
+    }));
+    setIsWorkspaceEdited(true);
+  };
+
+  const handleSaveWorkspaceChanges = async () => {
+    setIsSaving(true);
+    setSaveError(null);
+
+    try {
+      const { data, error } = await supabase
+        .from('workspaces')
+        .update({
+          name: workspaceChanges.name,
+          description: workspaceChanges.description
+        })
+        .eq('id', currentWorkspace.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Update local state
+      setCurrentWorkspace(data);
+      setWorkspaces(prev => 
+        prev.map(w => w.id === data.id ? data : w)
+      );
+      setIsWorkspaceEdited(false);
+    } catch (error) {
+      console.error('Error updating workspace:', error);
+      setSaveError('Failed to save changes. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const fetchUserWorkspaceRole = async () => {
+    if (!currentWorkspace || !currentUser) return;
+
+    const { data, error } = await supabase
+      .from('workspace_memberships')
+      .select('role')
+      .eq('workspace_id', currentWorkspace.id)
+      .eq('user_id', currentUser.id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching user role:', error);
+    } else {
+      setCurrentUserRole(data.role);
+    }
+  };
+
+  // Add effect to fetch role when workspace changes
+  useEffect(() => {
+    if (currentWorkspace && currentUser) {
+      fetchUserWorkspaceRole();
+    }
+  }, [currentWorkspace, currentUser]);
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', overflow: 'hidden' }}>
       {/* Global Top Bar */}
@@ -282,11 +369,21 @@ function UserPage() {
         elevation={0}
         sx={{ 
           backgroundColor: 'grey.900',
-          borderBottom: 1,
-          borderColor: 'grey.800',
+          height: 40,
+          minHeight: 40,
+          '& .MuiToolbar-root': {
+            minHeight: 40,
+            height: 40,
+            padding: '0 16px',
+          },
         }}
       >
-        <Toolbar sx={{ justifyContent: 'space-between', gap: 2 }}>
+        <Toolbar 
+          sx={{ 
+            justifyContent: 'space-between', 
+            gap: 2,
+          }}
+        >
           {/* Left section - reserved for future use */}
           <Box sx={{ width: 240, visibility: 'hidden' }} />
 
@@ -297,44 +394,47 @@ function UserPage() {
               maxWidth: 600,
               mx: 'auto',
               position: 'relative',
+              height: 28,
+              display: 'flex',
+              alignItems: 'center',
             }}
           >
             <Box
               sx={{
                 width: '100%',
-                height: 40,
+                height: '100%',
                 backgroundColor: 'grey.800',
                 borderRadius: 1,
                 display: 'flex',
                 alignItems: 'center',
-                px: 2,
+                px: 1.5,
                 opacity: 0.7,
                 cursor: 'not-allowed',
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', color: 'grey.400' }}>
-                <SearchIcon sx={{ mr: 1 }} />
-                <Typography>Search workspace...</Typography>
+                <SearchIcon sx={{ mr: 1, fontSize: 18 }} />
+                <Typography variant="body2">Search workspace...</Typography>
               </Box>
             </Box>
           </Box>
 
           {/* Right section - Settings */}
           <Box sx={{ display: 'flex', alignItems: 'center', ml: 'auto' }}>
-            <Tooltip title="Workspace Settings">
-              <IconButton
-                onClick={handleSettingsClick}
-                disableRipple
-                sx={{ 
-                  color: 'grey.400',
-                  '&:focus': {
-                    outline: 'none',
-                  },
-                }}
-              >
-                <SettingsIcon />
-              </IconButton>
-            </Tooltip>
+            <IconButton
+              onClick={handleSettingsClick}
+              disableRipple
+              size="small"
+              sx={{ 
+                color: 'grey.400',
+                '&:focus': {
+                  outline: 'none',
+                },
+                p: 0.75,
+              }}
+            >
+              <SettingsIcon sx={{ fontSize: 18 }} />
+            </IconButton>
           </Box>
         </Toolbar>
       </AppBar>
@@ -364,22 +464,28 @@ function UserPage() {
           }}
         >
           {/* Top section with workspace button */}
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', mb: 3 }}>
             {workspaces.length === 0 ? (
               // Show create workspace button if user has no workspaces
               <Tooltip title="Create Workspace" placement="right">
                 <IconButton
                   onClick={() => setIsCreateWorkspaceOpen(true)}
+                  disableRipple
                   sx={{ 
-                    width: 48,
-                    height: 48,
-                    borderRadius: 2,
+                    width: 36,
+                    height: 36,
+                    borderRadius: 1.5,
                     backgroundColor: 'grey.800',
                     color: 'grey.100',
                     '&:hover': {
                       backgroundColor: 'grey.700',
+                      '& > svg': {
+                        transform: 'scale(1.15)',
+                      },
                     },
-                    mb: 1,
+                    '& > svg': {
+                      transition: 'transform 0.2s ease',
+                    },
                   }}
                 >
                   <AddIcon />
@@ -388,26 +494,30 @@ function UserPage() {
             ) : (
               // Show current workspace button with dropdown
               <>
-                <Tooltip title={currentWorkspace?.name || ''} placement="right">
-                  <IconButton
-                    onClick={handleWorkspaceSwitcherClick}
-                    sx={{ 
-                      width: 48,
-                      height: 48,
-                      borderRadius: 2,
-                      backgroundColor: 'primary.main',
-                      color: 'grey.100',
-                      fontSize: '1.2rem',
-                      fontWeight: 'bold',
-                      '&:hover': {
-                        backgroundColor: 'primary.dark',
+                <IconButton
+                  onClick={handleWorkspaceSwitcherClick}
+                  disableRipple
+                  sx={{ 
+                    width: 36,
+                    height: 36,
+                    borderRadius: 1.5,
+                    backgroundColor: 'primary.main',
+                    color: 'grey.100',
+                    fontSize: '1.2rem',
+                    fontWeight: 'bold',
+                    '&:hover': {
+                      backgroundColor: 'primary.dark',
+                      '& > svg': {
+                        transform: 'scale(1.15)',
                       },
-                      mb: 1,
-                    }}
-                  >
-                    {currentWorkspace?.name?.charAt(0).toUpperCase()}
-                  </IconButton>
-                </Tooltip>
+                    },
+                    '& > svg': {
+                      transition: 'transform 0.2s ease',
+                    },
+                  }}
+                >
+                  {currentWorkspace?.name?.charAt(0).toUpperCase()}
+                </IconButton>
                 <Popper
                   open={Boolean(workspaceSwitcherAnchor)}
                   anchorEl={workspaceSwitcherAnchor}
@@ -495,7 +605,251 @@ function UserPage() {
                 </Popper>
               </>
             )}
-            <Divider sx={{ width: '80%', borderColor: 'grey.800', my: 1 }} />
+          </Box>
+
+          {/* Activity section */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', gap: 1.5 }}>
+            <Box 
+              onClick={() => setSelectedHeroButton('home')}
+              sx={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center',
+                cursor: 'pointer',
+                '&:hover': {
+                  '& .MuiIconButton-root': {
+                    backgroundColor: 'grey.700',
+                    color: 'grey.100',
+                  },
+                  '& .MuiTypography-root': {
+                    color: 'grey.100',
+                  },
+                },
+                '&:focus': {
+                  outline: 'none',
+                },
+              }}
+            >
+              <IconButton
+                disableRipple
+                sx={{ 
+                  width: 36,
+                  height: 36,
+                  borderRadius: 1.5,
+                  backgroundColor: selectedHeroButton === 'home' ? 'grey.700' : 'grey.900',
+                  color: selectedHeroButton === 'home' ? 'grey.100' : 'grey.400',
+                  '&:hover': {
+                    backgroundColor: 'grey.700',
+                    '& > svg': {
+                      transform: 'scale(1.15)',
+                    },
+                  },
+                  '&:focus': {
+                    outline: 'none',
+                  },
+                  '& > svg': {
+                    transition: 'transform 0.2s ease',
+                  },
+                }}
+              >
+                <HomeIcon />
+              </IconButton>
+              <Typography 
+                variant="caption" 
+                sx={{ 
+                  color: selectedHeroButton === 'home' ? 'grey.100' : 'grey.400', 
+                  fontSize: '0.6875rem', 
+                  mt: 0.5,
+                  fontWeight: 'bold',
+                  transition: 'color 0.2s',
+                  userSelect: 'none',
+                }}
+              >
+                Home
+              </Typography>
+            </Box>
+
+            <Box 
+              onClick={() => setSelectedHeroButton('activity')}
+              sx={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center',
+                cursor: 'pointer',
+                '&:hover': {
+                  '& .MuiIconButton-root': {
+                    backgroundColor: 'grey.700',
+                    color: 'grey.100',
+                  },
+                  '& .MuiTypography-root': {
+                    color: 'grey.100',
+                  },
+                },
+                '&:focus': {
+                  outline: 'none',
+                },
+              }}
+            >
+              <IconButton
+                disableRipple
+                sx={{ 
+                  width: 36,
+                  height: 36,
+                  borderRadius: 1.5,
+                  backgroundColor: selectedHeroButton === 'activity' ? 'grey.700' : 'grey.900',
+                  color: selectedHeroButton === 'activity' ? 'grey.100' : 'grey.400',
+                  '&:hover': {
+                    backgroundColor: 'grey.700',
+                    '& > svg': {
+                      transform: 'scale(1.15)',
+                    },
+                  },
+                  '&:focus': {
+                    outline: 'none',
+                  },
+                  '& > svg': {
+                    transition: 'transform 0.2s ease',
+                  },
+                }}
+              >
+                <NotificationsIcon />
+              </IconButton>
+              <Typography 
+                variant="caption" 
+                sx={{ 
+                  color: selectedHeroButton === 'activity' ? 'grey.100' : 'grey.400', 
+                  fontSize: '0.6875rem', 
+                  mt: 0.5,
+                  fontWeight: 'bold',
+                  transition: 'color 0.2s',
+                  userSelect: 'none',
+                }}
+              >
+                Activity
+              </Typography>
+            </Box>
+
+            <Box 
+              onClick={() => setSelectedHeroButton('dms')}
+              sx={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center',
+                cursor: 'pointer',
+                '&:hover': {
+                  '& .MuiIconButton-root': {
+                    backgroundColor: 'grey.700',
+                    color: 'grey.100',
+                  },
+                  '& .MuiTypography-root': {
+                    color: 'grey.100',
+                  },
+                },
+                '&:focus': {
+                  outline: 'none',
+                },
+              }}
+            >
+              <IconButton
+                disableRipple
+                sx={{ 
+                  width: 36,
+                  height: 36,
+                  borderRadius: 1.5,
+                  backgroundColor: selectedHeroButton === 'dms' ? 'grey.700' : 'grey.900',
+                  color: selectedHeroButton === 'dms' ? 'grey.100' : 'grey.400',
+                  '&:hover': {
+                    backgroundColor: 'grey.700',
+                    '& > svg': {
+                      transform: 'scale(1.15)',
+                    },
+                  },
+                  '&:focus': {
+                    outline: 'none',
+                  },
+                  '& > svg': {
+                    transition: 'transform 0.2s ease',
+                  },
+                }}
+              >
+                <Box sx={{ position: 'relative', display: 'flex' }}>
+                  <ChatBubbleIcon />
+                </Box>
+              </IconButton>
+              <Typography 
+                variant="caption" 
+                sx={{ 
+                  color: selectedHeroButton === 'dms' ? 'grey.100' : 'grey.400', 
+                  fontSize: '0.6875rem', 
+                  mt: 0.5,
+                  fontWeight: 'bold',
+                  transition: 'color 0.2s',
+                  userSelect: 'none',
+                }}
+              >
+                DMs
+              </Typography>
+            </Box>
+
+            <Box 
+              onClick={() => setSelectedHeroButton('more')}
+              sx={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center',
+                cursor: 'pointer',
+                '&:hover': {
+                  '& .MuiIconButton-root': {
+                    backgroundColor: 'grey.700',
+                    color: 'grey.100',
+                  },
+                  '& .MuiTypography-root': {
+                    color: 'grey.100',
+                  },
+                },
+                '&:focus': {
+                  outline: 'none',
+                },
+              }}
+            >
+              <IconButton
+                disableRipple
+                sx={{ 
+                  width: 36,
+                  height: 36,
+                  borderRadius: 1.5,
+                  backgroundColor: selectedHeroButton === 'more' ? 'grey.700' : 'grey.900',
+                  color: selectedHeroButton === 'more' ? 'grey.100' : 'grey.400',
+                  '&:hover': {
+                    backgroundColor: 'grey.700',
+                    '& > svg': {
+                      transform: 'scale(1.15)',
+                    },
+                  },
+                  '&:focus': {
+                    outline: 'none',
+                  },
+                  '& > svg': {
+                    transition: 'transform 0.2s ease',
+                  },
+                }}
+              >
+                <MoreHorizIcon />
+              </IconButton>
+              <Typography 
+                variant="caption" 
+                sx={{ 
+                  color: selectedHeroButton === 'more' ? 'grey.100' : 'grey.400', 
+                  fontSize: '0.6875rem', 
+                  mt: 0.5,
+                  fontWeight: 'bold',
+                  transition: 'color 0.2s',
+                  userSelect: 'none',
+                }}
+              >
+                More
+              </Typography>
+            </Box>
           </Box>
 
           {/* Bottom section with logout button */}
@@ -503,14 +857,21 @@ function UserPage() {
             <Tooltip title="Logout" placement="right">
               <IconButton
                 onClick={handleLogout}
+                disableRipple
                 sx={{ 
-                  width: 48,
-                  height: 48,
-                  borderRadius: 2,
+                  width: 36,
+                  height: 36,
+                  borderRadius: 1.5,
                   backgroundColor: 'error.dark',
                   color: 'error.contrastText',
                   '&:hover': {
                     backgroundColor: 'error.main',
+                    '& > svg': {
+                      transform: 'scale(1.15)',
+                    },
+                  },
+                  '& > svg': {
+                    transition: 'transform 0.2s ease',
                   },
                 }}
               >
@@ -736,9 +1097,139 @@ function UserPage() {
               overflow: 'auto',
               p: 3,
             }}>
-              {/* Sections will be added here */}
-              <Typography color="grey.500" align="center">
-                Settings content coming soon...
+              {/* General Settings Section */}
+              <Box>
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    color: 'grey.700',
+                    fontSize: '0.75rem',
+                    fontWeight: 'bold',
+                    textTransform: 'uppercase',
+                    mb: 2,
+                  }}
+                >
+                  General Settings
+                </Typography>
+
+                <Stack spacing={3}>
+                  <Box>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{ mb: 1, color: currentUserRole === 'owner' ? 'grey.700' : 'grey.500' }}
+                    >
+                      Workspace Name
+                    </Typography>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      value={workspaceChanges.name}
+                      onChange={handleWorkspaceChange('name')}
+                      disabled={currentUserRole !== 'owner'}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          backgroundColor: currentUserRole === 'owner' ? 'grey.100' : 'grey.50',
+                          color: currentUserRole === 'owner' ? 'grey.900' : 'grey.600',
+                          '& fieldset': {
+                            borderColor: currentUserRole === 'owner' ? 'grey.300' : 'grey.200',
+                          },
+                          '&:hover fieldset': {
+                            borderColor: currentUserRole === 'owner' ? 'grey.400' : 'grey.200',
+                          },
+                          '&.Mui-focused fieldset': {
+                            borderColor: currentUserRole === 'owner' ? 'primary.main' : 'grey.200',
+                          },
+                          '&.Mui-disabled': {
+                            backgroundColor: 'grey.50',
+                            color: 'grey.600',
+                            '& fieldset': {
+                              borderColor: 'grey.200',
+                            },
+                          },
+                        },
+                      }}
+                    />
+                  </Box>
+
+                  <Box>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{ mb: 1, color: currentUserRole === 'owner' ? 'grey.700' : 'grey.500' }}
+                    >
+                      Description
+                    </Typography>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      multiline
+                      rows={3}
+                      placeholder={currentUserRole === 'owner' ? "Add a description for your workspace" : "No description provided"}
+                      value={workspaceChanges.description}
+                      onChange={handleWorkspaceChange('description')}
+                      disabled={currentUserRole !== 'owner'}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          backgroundColor: currentUserRole === 'owner' ? 'grey.100' : 'grey.50',
+                          color: currentUserRole === 'owner' ? 'grey.900' : 'grey.600',
+                          '& fieldset': {
+                            borderColor: currentUserRole === 'owner' ? 'grey.300' : 'grey.200',
+                          },
+                          '&:hover fieldset': {
+                            borderColor: currentUserRole === 'owner' ? 'grey.400' : 'grey.200',
+                          },
+                          '&.Mui-focused fieldset': {
+                            borderColor: currentUserRole === 'owner' ? 'primary.main' : 'grey.200',
+                          },
+                          '&.Mui-disabled': {
+                            backgroundColor: 'grey.50',
+                            color: 'grey.600',
+                            '& fieldset': {
+                              borderColor: 'grey.200',
+                            },
+                          },
+                        },
+                        '& .MuiOutlinedInput-input::placeholder': {
+                          color: 'grey.500',
+                          opacity: 1,
+                        },
+                      }}
+                    />
+                    {currentUserRole === 'owner' && (
+                      <Typography
+                        variant="caption"
+                        sx={{ mt: 0.5, display: 'block', color: 'grey.600' }}
+                      >
+                        Let people know what this workspace is about.
+                      </Typography>
+                    )}
+                  </Box>
+
+                  {/* Save Button and Error Message */}
+                  {currentUserRole === 'owner' && (isWorkspaceEdited || saveError) && (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1, mt: 2 }}>
+                      {saveError && (
+                        <Typography color="error" variant="caption">
+                          {saveError}
+                        </Typography>
+                      )}
+                      <Button
+                        variant="contained"
+                        onClick={handleSaveWorkspaceChanges}
+                        disabled={isSaving}
+                        sx={{ minWidth: 100 }}
+                      >
+                        {isSaving ? 'Saving...' : 'Save'}
+                      </Button>
+                    </Box>
+                  )}
+                </Stack>
+              </Box>
+
+              <Divider sx={{ my: 4, borderColor: 'grey.200' }} />
+
+              {/* Placeholder for other sections */}
+              <Typography color="grey.600" align="center">
+                More settings coming soon...
               </Typography>
             </Box>
           </Box>
