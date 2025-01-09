@@ -267,7 +267,7 @@ function UserPage() {
   };
 
   const handleSettingsClick = () => {
-    setIsSettingsOpen(true);
+    setIsSettingsOpen(!isSettingsOpen);
   };
 
   const handleSettingsClose = () => {
@@ -324,7 +324,13 @@ function UserPage() {
             <Tooltip title="Workspace Settings">
               <IconButton
                 onClick={handleSettingsClick}
-                sx={{ color: 'grey.400' }}
+                disableRipple
+                sx={{ 
+                  color: 'grey.400',
+                  '&:focus': {
+                    outline: 'none',
+                  },
+                }}
               >
                 <SettingsIcon />
               </IconButton>
