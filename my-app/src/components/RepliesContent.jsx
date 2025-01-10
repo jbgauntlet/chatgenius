@@ -1,26 +1,42 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import {
   Box,
   Typography,
   Divider,
-  TextField,
-  Button,
   Avatar,
   CircularProgress,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import { supabase } from '../supabaseClient';
+import MessageInput from './MessageInput';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
+import FileUploadIcon from '@mui/icons-material/FileUpload';
+import DownloadIcon from '@mui/icons-material/Download';
+import CloseIcon from '@mui/icons-material/Close';
 
 export default function RepliesContent({ parentMessage }) {
   const [replies, setReplies] = useState([]);
-  const [newReply, setNewReply] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [uploadProgress, setUploadProgress] = useState({});
+  const repliesEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    repliesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   useEffect(() => {
     if (parentMessage) {
       fetchReplies();
     }
   }, [parentMessage]);
+
+  // Add effect to scroll to bottom when replies change
+  useEffect(() => {
+    scrollToBottom();
+  }, [replies]);
 
   const fetchReplies = async () => {
     if (!parentMessage) return;
@@ -46,22 +62,67 @@ export default function RepliesContent({ parentMessage }) {
     }
   };
 
-  const handleSendReply = async () => {
-    if (!newReply.trim() || !parentMessage) return;
+  const handleFileSelect = (event) => {
+    const files = Array.from(event.target.files);
+    setSelectedFiles(prev => [...prev, ...files]);
+  };
+
+  const removeSelectedFile = (index) => {
+    setSelectedFiles(files => files.filter((_, i) => i !== index));
+    setUploadProgress(progress => {
+      const newProgress = { ...progress };
+      delete newProgress[selectedFiles[index].name];
+      return newProgress;
+    });
+  };
+
+  const handleSendReply = async (message) => {
+    if ((!message || !message.trim()) && selectedFiles.length === 0) return;
 
     setSending(true);
+    setUploadProgress({});
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user found');
 
+      // Upload files first if any
+      const attachments = [];
+      for (const file of selectedFiles) {
+        const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const uniquePrefix = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        const filePath = `${uniquePrefix}-${cleanFileName}`;
+
+        const { data: fileData, error: uploadError } = await supabase.storage
+          .from('private-files')
+          .upload(filePath, file, {
+            onUploadProgress: (progress) => {
+              const percent = (progress.loaded / progress.total) * 100;
+              setUploadProgress(prev => ({
+                ...prev,
+                [file.name]: Math.round(percent)
+              }));
+            }
+          });
+
+        if (uploadError) throw uploadError;
+
+        attachments.push({
+          path: filePath,
+          name: file.name,
+          type: file.type,
+          size: file.size
+        });
+      }
+
       const { data, error } = await supabase
         .from('messages')
         .insert([{
-          content: newReply,
+          content: message,
           sender_id: user.id,
           parent_message_id: parentMessage.id,
           channel_id: parentMessage.channel_id,
           workspace_id: parentMessage.workspace_id,
+          attachments: attachments.length > 0 ? attachments : null
         }])
         .select(`
           *,
@@ -74,12 +135,221 @@ export default function RepliesContent({ parentMessage }) {
       if (error) throw error;
 
       setReplies(prev => [...prev, data]);
-      setNewReply('');
+      setSelectedFiles([]);
+      setUploadProgress({});
     } catch (error) {
       console.error('Error sending reply:', error);
     } finally {
       setSending(false);
+      setUploadProgress({});
     }
+  };
+
+  const AttachmentItem = memo(({ attachment }) => {
+    const [signedUrl, setSignedUrl] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const isImage = attachment.type?.startsWith('image/');
+    const urlExpiryRef = useRef(null);
+    
+    const refreshSignedUrl = async () => {
+      // If we have a valid URL that hasn't expired, don't refresh
+      if (signedUrl && urlExpiryRef.current && Date.now() < urlExpiryRef.current) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase.storage
+          .from('private-files')
+          .createSignedUrl(attachment.path, 604800); // URL valid for 7 days (maximum allowed)
+
+        if (error) throw error;
+        
+        setSignedUrl(data.signedUrl);
+        // Set expiry time to slightly less than the actual expiry to be safe
+        urlExpiryRef.current = Date.now() + (604800 * 1000 * 0.9);
+      } catch (error) {
+        console.error('Error refreshing signed URL:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    useEffect(() => {
+      refreshSignedUrl();
+    }, [attachment.path]);
+
+    const handleDownload = async () => {
+      try {
+        // Try to fetch with current URL
+        const response = await fetch(signedUrl);
+        
+        // If the URL has expired (403 or 401), refresh it and try again
+        if (!response.ok && (response.status === 403 || response.status === 401)) {
+          await refreshSignedUrl();
+          const newResponse = await fetch(signedUrl);
+          if (!newResponse.ok) throw new Error('Failed to download file');
+          const blob = await newResponse.blob();
+          triggerDownload(blob);
+        } else {
+          const blob = await response.blob();
+          triggerDownload(blob);
+        }
+      } catch (error) {
+        console.error('Error downloading file:', error);
+      }
+    };
+
+    const triggerDownload = (blob) => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = attachment.name;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    };
+
+    const handleLinkClick = async (e) => {
+      e.preventDefault();
+      // Try to open the URL, if it fails (expired), refresh and try again
+      try {
+        const response = await fetch(signedUrl, { method: 'HEAD' });
+        if (!response.ok && (response.status === 403 || response.status === 401)) {
+          await refreshSignedUrl();
+          window.open(signedUrl, '_blank');
+        } else {
+          window.open(signedUrl, '_blank');
+        }
+      } catch (error) {
+        console.error('Error opening file:', error);
+      }
+    };
+
+    if (isLoading) {
+      return (
+        <Box
+          sx={{
+            mt: 1,
+            p: 1,
+            bgcolor: 'grey.100',
+            borderRadius: 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}
+        >
+          <CircularProgress size={20} />
+          <Typography variant="body2">Loading attachment...</Typography>
+        </Box>
+      );
+    }
+    
+    if (isImage) {
+      return (
+        <Box
+          sx={{
+            mt: 1,
+            p: 1,
+            bgcolor: 'grey.100',
+            borderRadius: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1
+          }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              mb: 1
+            }}
+          >
+            <FileUploadIcon sx={{ color: 'primary.main' }} />
+            <Typography variant="body2" component="a" 
+              href={signedUrl}
+              onClick={handleLinkClick}
+              sx={{ 
+                color: 'primary.main',
+                textDecoration: 'none',
+                flexGrow: 1,
+                cursor: 'pointer',
+                '&:hover': { textDecoration: 'underline' }
+              }}
+            >
+              {attachment.name}
+            </Typography>
+            <Tooltip title="Download">
+              <IconButton 
+                size="small" 
+                onClick={handleDownload}
+                sx={{ ml: 'auto' }}
+              >
+                <DownloadIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+          <Box
+            component="img"
+            src={signedUrl}
+            alt={attachment.name}
+            sx={{
+              maxWidth: '300px',
+              maxHeight: '200px',
+              objectFit: 'contain',
+              borderRadius: 1,
+              cursor: 'pointer'
+            }}
+            onClick={handleLinkClick}
+          />
+        </Box>
+      );
+    }
+    
+    return (
+      <Box
+        sx={{
+          mt: 1,
+          p: 1,
+          bgcolor: 'grey.100',
+          borderRadius: 1,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1
+        }}
+      >
+        <FileUploadIcon sx={{ color: 'primary.main' }} />
+        <Typography variant="body2" component="a" 
+          href={signedUrl}
+          onClick={handleLinkClick}
+          sx={{ 
+            color: 'primary.main',
+            textDecoration: 'none',
+            flexGrow: 1,
+            cursor: 'pointer',
+            '&:hover': { textDecoration: 'underline' }
+          }}
+        >
+          {attachment.name}
+        </Typography>
+        <Tooltip title="Download">
+          <IconButton 
+            size="small" 
+            onClick={handleDownload}
+            sx={{ ml: 'auto' }}
+          >
+            <DownloadIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Box>
+    );
+  });
+
+  const renderAttachment = (attachment) => {
+    return <AttachmentItem key={attachment.path} attachment={attachment} />;
   };
 
   if (!parentMessage) {
@@ -91,7 +361,7 @@ export default function RepliesContent({ parentMessage }) {
   }
 
   return (
-    <Box>
+    <Box sx={{ height: '100%', overflow: 'auto' }}>
       {/* Original Message */}
       <Box sx={{ mb: 3 }}>
         <Typography variant="subtitle2" color="grey.600" sx={{ mb: 1 }}>
@@ -121,6 +391,11 @@ export default function RepliesContent({ parentMessage }) {
           <Typography
             dangerouslySetInnerHTML={{ __html: parentMessage.content }}
           />
+          {parentMessage.attachments?.length > 0 && (
+            <Box sx={{ mt: 1 }}>
+              {parentMessage.attachments.map(attachment => renderAttachment(attachment))}
+            </Box>
+          )}
         </Box>
       </Box>
 
@@ -163,9 +438,15 @@ export default function RepliesContent({ parentMessage }) {
                     dangerouslySetInnerHTML={{ __html: reply.content }}
                     sx={{ wordBreak: 'break-word' }}
                   />
+                  {reply.attachments?.length > 0 && (
+                    <Box sx={{ mt: 1 }}>
+                      {reply.attachments.map(attachment => renderAttachment(attachment))}
+                    </Box>
+                  )}
                 </Box>
               </Box>
             ))}
+            <div ref={repliesEndRef} />
           </Box>
         ) : (
           <Typography color="grey.600" sx={{ mb: 3 }}>
@@ -173,29 +454,61 @@ export default function RepliesContent({ parentMessage }) {
           </Typography>
         )}
 
+        {/* File Upload Preview */}
+        {selectedFiles.length > 0 && (
+          <Box sx={{ mb: 2 }}>
+            {selectedFiles.map((file, index) => (
+              <Box
+                key={index}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  mb: 1,
+                  p: 1,
+                  bgcolor: 'grey.100',
+                  borderRadius: 1,
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}
+              >
+                <AttachFileIcon sx={{ color: 'primary.main' }} />
+                <Typography variant="body2">{file.name}</Typography>
+                <IconButton 
+                  size="small" 
+                  onClick={() => removeSelectedFile(index)}
+                  sx={{ ml: 'auto' }}
+                  disabled={sending}
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+                {sending && uploadProgress[file.name] !== undefined && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      width: `${uploadProgress[file.name]}%`,
+                      height: '2px',
+                      bgcolor: 'primary.main',
+                      transition: 'width 0.3s ease'
+                    }}
+                  />
+                )}
+              </Box>
+            ))}
+          </Box>
+        )}
+
         {/* Reply Input */}
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <TextField
-            fullWidth
-            size="small"
-            placeholder="Reply to thread..."
-            value={newReply}
-            onChange={(e) => setNewReply(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSendReply();
-              }
-            }}
-          />
-          <Button
-            variant="contained"
-            onClick={handleSendReply}
-            disabled={!newReply.trim() || sending}
-          >
-            {sending ? 'Sending...' : 'Reply'}
-          </Button>
-        </Box>
+        <MessageInput
+          channelId={parentMessage.channel_id}
+          channelName="thread"
+          onSendMessage={handleSendReply}
+          onFileSelect={handleFileSelect}
+          uploading={sending}
+          selectedFiles={selectedFiles}
+        />
       </Box>
     </Box>
   );

@@ -41,6 +41,9 @@ export default function Messaging({ channelId, channelName, workspaceId, onThrea
         table: 'messages', 
         filter: `channel_id=eq.${channelId}` 
       }, async (payload) => {
+        // Only process if it's not a thread reply
+        if (payload.new.parent_message_id) return;
+
         // Fetch the complete message data including sender info
         const { data: messageData, error } = await supabase
           .from("messages")
@@ -93,6 +96,7 @@ export default function Messaging({ channelId, channelName, workspaceId, onThrea
       `)
       .eq("channel_id", channelId)
       .eq("workspace_id", workspaceId)
+      .is("parent_message_id", null)  // Only fetch top-level messages
       .order("created_at", { ascending: true });
 
     if (error) {
