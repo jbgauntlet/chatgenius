@@ -35,20 +35,62 @@ export default function RepliesContent({ parentMessage }) {
 
   // Add effect to scroll to bottom when replies change
   useEffect(() => {
-    scrollToBottom();
+    // Use a small delay to ensure images have started loading
+    const timeoutId = setTimeout(scrollToBottom, 100);
+    return () => clearTimeout(timeoutId);
   }, [replies]);
+
+  // Add another effect to scroll when images finish loading
+  useEffect(() => {
+    const handleImageLoad = () => {
+      scrollToBottom();
+    };
+
+    // Add load event listeners to all images in the replies
+    const images = document.querySelectorAll('.reply-image');
+    images.forEach(img => {
+      img.addEventListener('load', handleImageLoad);
+    });
+
+    return () => {
+      // Clean up listeners
+      images.forEach(img => {
+        img.removeEventListener('load', handleImageLoad);
+      });
+    };
+  }, [replies]);
+
+  // Add effect to scroll when selected files change
+  useEffect(() => {
+    if (selectedFiles.length > 0) {
+      scrollToBottom();
+    }
+  }, [selectedFiles]);
 
   const fetchReplies = async () => {
     if (!parentMessage) return;
 
     try {
+      // Check if it's a DM or channel message based on the presence of channel_id
+      const isDirectMessage = !parentMessage.channel_id;
+      const table = isDirectMessage ? 'user_messages' : 'messages';
+
       const { data, error } = await supabase
-        .from('messages')
+        .from(table)
         .select(`
           *,
-          users:sender_id (
-            name
-          )
+          ${isDirectMessage ? `
+            sender:sender_id (
+              name
+            ),
+            recipient:recipient_id (
+              name
+            )
+          ` : `
+            users:sender_id (
+              name
+            )
+          `}
         `)
         .eq('parent_message_id', parentMessage.id)
         .order('created_at', { ascending: true });
@@ -65,6 +107,7 @@ export default function RepliesContent({ parentMessage }) {
   const handleFileSelect = (event) => {
     const files = Array.from(event.target.files);
     setSelectedFiles(prev => [...prev, ...files]);
+    // Remove immediate scroll since we have the effect above
   };
 
   const removeSelectedFile = (index) => {
@@ -114,25 +157,54 @@ export default function RepliesContent({ parentMessage }) {
         });
       }
 
+      // Check if it's a DM or channel message
+      const isDirectMessage = !parentMessage.channel_id;
+      const table = isDirectMessage ? 'user_messages' : 'messages';
+
+      // Prepare message data
+      const messageData = {
+        content: message,
+        sender_id: user.id,
+        parent_message_id: parentMessage.id,
+        workspace_id: parentMessage.workspace_id,
+        attachments: attachments.length > 0 ? attachments : null,
+        ...(isDirectMessage ? {
+          recipient_id: parentMessage.sender_id === user.id ? parentMessage.recipient_id : parentMessage.sender_id
+        } : {
+          channel_id: parentMessage.channel_id
+        })
+      };
+
+      // Insert the reply
       const { data, error } = await supabase
-        .from('messages')
-        .insert([{
-          content: message,
-          sender_id: user.id,
-          parent_message_id: parentMessage.id,
-          channel_id: parentMessage.channel_id,
-          workspace_id: parentMessage.workspace_id,
-          attachments: attachments.length > 0 ? attachments : null
-        }])
+        .from(table)
+        .insert([messageData])
         .select(`
           *,
-          users:sender_id (
-            name
-          )
+          ${isDirectMessage ? `
+            sender:sender_id (
+              name
+            ),
+            recipient:recipient_id (
+              name
+            )
+          ` : `
+            users:sender_id (
+              name
+            )
+          `}
         `)
         .single();
 
       if (error) throw error;
+
+      // Update thread count on parent message
+      const { error: updateError } = await supabase
+        .from(table)
+        .update({ thread_count: (parentMessage.thread_count || 0) + 1 })
+        .eq('id', parentMessage.id);
+
+      if (updateError) throw updateError;
 
       setReplies(prev => [...prev, data]);
       setSelectedFiles([]);
@@ -294,6 +366,7 @@ export default function RepliesContent({ parentMessage }) {
           </Box>
           <Box
             component="img"
+            className="reply-image"
             src={signedUrl}
             alt={attachment.name}
             sx={{

@@ -1,20 +1,22 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import {
   Box,
   Typography,
   IconButton,
   CircularProgress,
   Tooltip,
+  Avatar,
 } from '@mui/material';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 import DownloadIcon from '@mui/icons-material/Download';
 import CloseIcon from '@mui/icons-material/Close';
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import { supabase } from '../supabaseClient';
 import 'react-quill/dist/quill.snow.css';
 import MessageInput from './MessageInput';
 
-export default function DirectMessaging({ recipientId, recipientName, workspaceId }) {
+export default function DirectMessaging({ recipientId, recipientName, workspaceId, onThreadClick }) {
   const [messages, setMessages] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -41,6 +43,9 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
           table: 'user_messages',
           filter: `workspace_id=eq.${workspaceId}` 
         }, async (payload) => {
+          // Skip thread replies
+          if (payload.new.parent_message_id) return;
+
           // Only process messages that are part of this conversation
           const isRelevantMessage = (
             // Message is from current user to recipient
@@ -114,6 +119,7 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
         )
       `)
       .eq('workspace_id', workspaceId)
+      .is('parent_message_id', null)  // Only fetch top-level messages
       .or(`and(sender_id.eq.${user.id},recipient_id.eq.${recipientId}),and(sender_id.eq.${recipientId},recipient_id.eq.${user.id})`)
       .order("created_at", { ascending: true });
 
@@ -194,7 +200,8 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
         recipient_id: recipientId,
         workspace_id: workspaceId,
         content: message,
-        attachments
+        attachments: attachments.length > 0 ? attachments : null,
+        thread_count: 0  // Initialize thread count
       };
 
       const { data, error } = await supabase
@@ -431,37 +438,108 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
     return <AttachmentItem key={attachment.path} attachment={attachment} />;
   };
 
-  return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ 
-        flexGrow: 1, 
-        overflowY: 'auto', 
-        padding: '20px',
+  const handleReplyClick = (message) => {
+    onThreadClick(message);
+  };
+
+  const renderMessage = (msg) => (
+    <Box
+      key={msg.id}
+      sx={{
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: '#fff'
-      }}>
-        {messages.map((msg) => (
-          <div key={msg.id} className="message-container">
-            <div className="message-header">
-              <div className="message-user-info">
-                <div className="message-avatar">
-                  {msg.sender?.name?.charAt(0).toUpperCase()}
-                </div>
-                <span className="message-name">{msg.sender?.name || 'Unknown User'}</span>
-              </div>
-              <span className="message-timestamp">
-                {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            </div>
-            <div className="message-content">
-              <span dangerouslySetInnerHTML={{ __html: msg.content }} />
-              {msg.attachments && msg.attachments.map(attachment => renderAttachment(attachment))}
-            </div>
-          </div>
-        ))}
+        mb: 2,
+        '&:hover': {
+          '& .message-actions': {
+            opacity: 1,
+          },
+        },
+      }}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+        <Avatar sx={{ width: 36, height: 36 }}>
+          {msg.sender?.name?.charAt(0).toUpperCase()}
+        </Avatar>
+        <Box sx={{ flexGrow: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+            <Typography variant="subtitle2">
+              {msg.sender?.name || 'Unknown User'}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {new Date(msg.created_at).toLocaleTimeString()}
+            </Typography>
+          </Box>
+          <Typography
+            dangerouslySetInnerHTML={{ __html: msg.content }}
+            sx={{ wordBreak: 'break-word' }}
+          />
+          {msg.attachments?.length > 0 && (
+            <Box sx={{ mt: 1 }}>
+              {msg.attachments.map(attachment => renderAttachment(attachment))}
+            </Box>
+          )}
+        </Box>
+        <Box 
+          className="message-actions"
+          sx={{ 
+            opacity: 0, 
+            transition: 'opacity 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}
+        >
+          <Tooltip title="Reply in thread">
+            <IconButton 
+              size="small"
+              onClick={() => handleReplyClick(msg)}
+              sx={{ color: 'grey.500' }}
+            >
+              <ChatBubbleOutlineIcon fontSize="small" />
+              {msg.thread_count > 0 && (
+                <Typography 
+                  variant="caption" 
+                  sx={{ ml: 0.5 }}
+                >
+                  {msg.thread_count}
+                </Typography>
+              )}
+            </IconButton>
+          </Tooltip>
+        </Box>
+      </Box>
+      {msg.thread_count > 0 && (
+        <Box 
+          onClick={() => handleReplyClick(msg)}
+          sx={{ 
+            ml: 7,
+            mt: 0.5,
+            color: 'primary.main',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5,
+            '&:hover': {
+              textDecoration: 'underline',
+            },
+          }}
+        >
+          <ChatBubbleOutlineIcon fontSize="small" />
+          <Typography variant="body2">
+            {msg.thread_count} {msg.thread_count === 1 ? 'reply' : 'replies'}
+          </Typography>
+        </Box>
+      )}
+    </Box>
+  );
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Messages Area */}
+      <Box sx={{ flexGrow: 1, overflow: 'auto', p: 2 }}>
+        {messages.map(msg => renderMessage(msg))}
         <div ref={messageEndRef} />
-      </div>
+      </Box>
 
       {/* File Upload Preview */}
       {selectedFiles.length > 0 && (
@@ -518,6 +596,6 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
         uploading={uploading}
         selectedFiles={selectedFiles}
       />
-    </div>
+    </Box>
   );
 } 
