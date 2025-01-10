@@ -20,6 +20,7 @@ export default function Messaging({ channelId, channelName, workspaceId }) {
   const [newMessage, setNewMessage] = useState("");
   const [uploading, setUploading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
+  const [uploadProgress, setUploadProgress] = useState({});
   const fileInputRef = useRef(null);
   const messageEndRef = useRef(null);
 
@@ -114,10 +115,18 @@ export default function Messaging({ channelId, channelName, workspaceId }) {
       const uniquePrefix = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
       const filePath = `${uniquePrefix}-${cleanFileName}`;
 
-      // Upload the file with minimal options
+      // Upload the file with progress tracking
       const { data, error: uploadError } = await supabase.storage
         .from('private-files')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          onUploadProgress: (progress) => {
+            const percent = (progress.loaded / progress.total) * 100;
+            setUploadProgress(prev => ({
+              ...prev,
+              [file.name]: Math.round(percent)
+            }));
+          }
+        });
 
       if (uploadError) throw uploadError;
 
@@ -137,6 +146,7 @@ export default function Messaging({ channelId, channelName, workspaceId }) {
     if (newMessage.trim() === "" && selectedFiles.length === 0) return;
 
     setUploading(true);
+    setUploadProgress({});
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -182,6 +192,7 @@ export default function Messaging({ channelId, channelName, workspaceId }) {
       console.error('Error sending message:', error);
     } finally {
       setUploading(false);
+      setUploadProgress({});
     }
   };
 
@@ -285,6 +296,68 @@ export default function Messaging({ channelId, channelName, workspaceId }) {
       );
     }
     
+    if (isImage) {
+      return (
+        <Box
+          sx={{
+            mt: 1,
+            p: 1,
+            bgcolor: 'grey.100',
+            borderRadius: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1
+          }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              mb: 1
+            }}
+          >
+            <FileUploadIcon sx={{ color: 'primary.main' }} />
+            <Typography variant="body2" component="a" 
+              href={signedUrl}
+              onClick={handleLinkClick}
+              sx={{ 
+                color: 'primary.main',
+                textDecoration: 'none',
+                flexGrow: 1,
+                cursor: 'pointer',
+                '&:hover': { textDecoration: 'underline' }
+              }}
+            >
+              {attachment.name}
+            </Typography>
+            <Tooltip title="Download">
+              <IconButton 
+                size="small" 
+                onClick={handleDownload}
+                sx={{ ml: 'auto' }}
+              >
+                <DownloadIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+          <Box
+            component="img"
+            src={signedUrl}
+            alt={attachment.name}
+            sx={{
+              maxWidth: '300px',
+              maxHeight: '200px',
+              objectFit: 'contain',
+              borderRadius: 1,
+              cursor: 'pointer'
+            }}
+            onClick={handleLinkClick}
+          />
+        </Box>
+      );
+    }
+    
     return (
       <Box
         sx={{
@@ -376,7 +449,9 @@ export default function Messaging({ channelId, channelName, workspaceId }) {
                   mb: 1,
                   p: 1,
                   bgcolor: 'grey.100',
-                  borderRadius: 1
+                  borderRadius: 1,
+                  position: 'relative',
+                  overflow: 'hidden'
                 }}
               >
                 <AttachFileIcon sx={{ color: 'primary.main' }} />
@@ -385,9 +460,23 @@ export default function Messaging({ channelId, channelName, workspaceId }) {
                   size="small" 
                   onClick={() => removeSelectedFile(index)}
                   sx={{ ml: 'auto' }}
+                  disabled={uploading}
                 >
                   <CloseIcon fontSize="small" />
                 </IconButton>
+                {uploading && uploadProgress[file.name] !== undefined && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      width: `${uploadProgress[file.name]}%`,
+                      height: '2px',
+                      bgcolor: 'primary.main',
+                      transition: 'width 0.3s ease'
+                    }}
+                  />
+                )}
               </Box>
             ))}
           </Box>
