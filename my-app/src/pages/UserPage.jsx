@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   Box,
   AppBar,
@@ -52,6 +52,7 @@ import ChatBubbleFilledIcon from '@mui/icons-material/ChatBubble';
 import SidePanel from '../components/SidePanel';
 import HelpContent from '../components/HelpContent';
 import RepliesContent from '../components/RepliesContent';
+import SearchResults from '../components/SearchResults';
 
 function UserPage() {
   const navigate = useNavigate();
@@ -91,6 +92,13 @@ function UserPage() {
     isOpen: false,
     data: null
   });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
+  const searchBoxRef = useRef(null);
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showSearchResults, setShowSearchResults] = useState(false);
 
   useEffect(() => {
     fetchUserData();
@@ -545,6 +553,155 @@ function UserPage() {
     });
   };
 
+  const handleSearch = (event) => {
+    setSearchQuery(event.target.value);
+    // TODO: Implement search logic
+  };
+
+  // Filter suggestions based on search query
+  const userSuggestions = users.filter(user => 
+    user.name.toLowerCase().includes(searchQuery.toLowerCase())
+  ).slice(0, 3);
+
+  const channelSuggestions = channels.filter(channel => 
+    channel.name.toLowerCase().includes(searchQuery.toLowerCase())
+  ).slice(0, 3);
+
+  const handleSearchFocus = () => {
+    setIsSearchFocused(true);
+    setShowSearchSuggestions(true);
+  };
+
+  const handleSearchBlur = (e) => {
+    // Only hide if click is outside search area
+    if (!e.relatedTarget?.closest('.search-suggestions')) {
+      setIsSearchFocused(false);
+      setShowSearchSuggestions(false);
+    }
+  };
+
+  // Add handlers for search suggestions
+  const handleUserSuggestionClick = (user) => {
+    setSelectedUser(user);
+    setSelectedChannel(null);
+    setSearchQuery('');
+    setShowSearchSuggestions(false);
+  };
+
+  const handleChannelSuggestionClick = (channel) => {
+    setSelectedChannel(channel);
+    setSelectedUser(null);
+    setSearchQuery('');
+    setShowSearchSuggestions(false);
+  };
+
+  const handleSearchClick = async () => {
+    setShowSearchSuggestions(false);
+    setShowSearchResults(true);
+    setIsSearching(true);
+
+    try {
+      // Search in both messages and user_messages tables
+      const [messagesResult, dmResult] = await Promise.all([
+        supabase
+          .from('messages')
+          .select(`
+            *,
+            sender:sender_id (
+              name
+            ),
+            channel:channel_id (
+              name
+            )
+          `)
+          .eq('workspace_id', currentWorkspace.id)
+          .ilike('content', `%${searchQuery}%`),
+        
+        supabase
+          .from('user_messages')
+          .select(`
+            *,
+            sender:sender_id (
+              name
+            ),
+            recipient:recipient_id (
+              name
+            )
+          `)
+          .eq('workspace_id', currentWorkspace.id)
+          .ilike('content', `%${searchQuery}%`)
+      ]);
+
+      if (messagesResult.error) throw messagesResult.error;
+      if (dmResult.error) throw dmResult.error;
+
+      // Combine and sort results by date
+      const allResults = [...messagesResult.data, ...dmResult.data]
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      setSearchResults(allResults);
+    } catch (error) {
+      console.error('Error searching messages:', error);
+      // TODO: Show error message to user
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSearchResultClick = async (message) => {
+    const isDirectMessage = !message.channel_id;
+    const isThreadReply = Boolean(message.parent_message_id);
+
+    if (isDirectMessage) {
+      // For DMs, set the recipient as selected user
+      const recipient = message.sender_id === currentUser?.id ? 
+        { id: message.recipient_id, name: message.recipient.name } :
+        { id: message.sender_id, name: message.sender.name };
+      setSelectedUser(recipient);
+      setSelectedChannel(null);
+    } else {
+      // For channel messages, set the channel
+      setSelectedChannel({ id: message.channel_id, name: message.channel.name });
+      setSelectedUser(null);
+    }
+
+    // If it's a thread reply, open the thread panel
+    if (isThreadReply) {
+      // Fetch the parent message first
+      const { data: parentMessage } = await supabase
+        .from(isDirectMessage ? 'user_messages' : 'messages')
+        .select(`
+          *,
+          sender:sender_id (
+            name
+          ),
+          ${isDirectMessage ? `
+            recipient:recipient_id (
+              name
+            )
+          ` : `
+            channel:channel_id (
+              name
+            )
+          `}
+        `)
+        .eq('id', message.parent_message_id)
+        .single();
+
+      if (parentMessage) {
+        setSidePanelState({
+          type: 'replies',
+          isOpen: true,
+          data: parentMessage
+        });
+      }
+    }
+
+    // Clear search results
+    setShowSearchResults(false);
+    setSearchQuery('');
+  };
+
   return (
     <Box sx={{ 
       display: 'flex', 
@@ -580,6 +737,7 @@ function UserPage() {
 
           {/* Center section - Search bar */}
           <Box
+            ref={searchBoxRef}
             sx={{
               flexGrow: 1,
               maxWidth: 600,
@@ -591,22 +749,169 @@ function UserPage() {
             }}
           >
             <Box
+              component="form"
+              onSubmit={(e) => e.preventDefault()}
               sx={{
                 width: '100%',
                 height: '100%',
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                backgroundColor: isSearchFocused ? 'common.white' : 'rgba(255, 255, 255, 0.1)',
                 borderRadius: 1,
                 display: 'flex',
                 alignItems: 'center',
                 px: 1.5,
-                cursor: 'not-allowed',
+                transition: 'background-color 0.2s ease',
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', color: '#FFFFFF' }}>
-                <SearchIcon sx={{ mr: 1, fontSize: 18 }} />
-                <Typography variant="body2" sx={{ color: '#FFFFFF' }}>Search workspace...</Typography>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center',
+                width: '100%',
+              }}>
+                <SearchIcon 
+                  sx={{ 
+                    mr: 1, 
+                    fontSize: 18,
+                    color: isSearchFocused ? 'grey.500' : '#FFFFFF',
+                    transition: 'color 0.2s ease',
+                  }} 
+                />
+                <TextField
+                  value={searchQuery}
+                  onChange={handleSearch}
+                  onFocus={handleSearchFocus}
+                  onBlur={handleSearchBlur}
+                  placeholder="Search workspace..."
+                  variant="standard"
+                  fullWidth
+                  InputProps={{
+                    disableUnderline: true,
+                    sx: {
+                      fontSize: '0.875rem',
+                      color: isSearchFocused ? 'text.primary' : '#FFFFFF',
+                      '&::placeholder': {
+                        color: isSearchFocused ? 'text.secondary' : '#FFFFFF',
+                        opacity: 1,
+                      },
+                      '& input': {
+                        padding: 0,
+                        height: '28px',
+                        '&::placeholder': {
+                          color: isSearchFocused ? 'text.secondary' : '#FFFFFF',
+                          opacity: 1,
+                        },
+                      },
+                    },
+                  }}
+                />
               </Box>
             </Box>
+
+            {/* Search Suggestions Dropdown */}
+            {showSearchSuggestions && searchQuery && (
+              <Paper
+                className="search-suggestions"
+                elevation={8}
+                sx={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  mt: 1,
+                  maxHeight: 400,
+                  overflow: 'auto',
+                  zIndex: (theme) => theme.zIndex.modal + 1,
+                }}
+              >
+                {/* Text Search Section */}
+                <Typography
+                  variant="overline"
+                  sx={{
+                    display: 'block',
+                    px: 2,
+                    py: 1,
+                    color: 'text.secondary',
+                    bgcolor: 'grey.50',
+                  }}
+                >
+                  Search For
+                </Typography>
+                <MenuItem
+                  tabIndex={0}
+                  onClick={handleSearchClick}
+                  sx={{ py: 1, px: 2 }}
+                >
+                  <SearchIcon sx={{ mr: 1, fontSize: 20, color: 'text.secondary' }} />
+                  <Typography>"{searchQuery}"</Typography>
+                </MenuItem>
+
+                {/* Channels Section */}
+                {channelSuggestions.length > 0 && (
+                  <>
+                    <Typography
+                      variant="overline"
+                      sx={{
+                        display: 'block',
+                        px: 2,
+                        py: 1,
+                        color: 'text.secondary',
+                        bgcolor: 'grey.50',
+                      }}
+                    >
+                      Channels
+                    </Typography>
+                    {channelSuggestions.map(channel => (
+                      <MenuItem
+                        key={channel.id}
+                        tabIndex={0}
+                        onClick={() => handleChannelSuggestionClick(channel)}
+                        sx={{ py: 1, px: 2 }}
+                      >
+                        <TagIcon sx={{ mr: 1, fontSize: 20, color: 'text.secondary' }} />
+                        <Typography>{channel.name}</Typography>
+                      </MenuItem>
+                    ))}
+                  </>
+                )}
+
+                {/* Users Section */}
+                {userSuggestions.length > 0 && (
+                  <>
+                    <Typography
+                      variant="overline"
+                      sx={{
+                        display: 'block',
+                        px: 2,
+                        py: 1,
+                        color: 'text.secondary',
+                        bgcolor: 'grey.50',
+                      }}
+                    >
+                      Users
+                    </Typography>
+                    {userSuggestions.map(user => (
+                      <MenuItem
+                        key={user.id}
+                        tabIndex={0}
+                        onClick={() => handleUserSuggestionClick(user)}
+                        sx={{ py: 1, px: 2 }}
+                      >
+                        <Avatar 
+                          sx={{ 
+                            width: 24, 
+                            height: 24, 
+                            fontSize: '0.75rem',
+                            mr: 1,
+                          }}
+                        >
+                          {user.name.charAt(0).toUpperCase()}
+                        </Avatar>
+                        <Typography>{user.name}</Typography>
+                      </MenuItem>
+                    ))}
+                  </>
+                )}
+              </Paper>
+            )}
           </Box>
 
           {/* Right section - Help */}
@@ -1375,57 +1680,66 @@ function UserPage() {
               height: '100%',
               bgcolor: '#fff',
             }}>
-        {(selectedChannel || selectedUser) && (
-                <Box sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  height: '100%',
-                }}>
-                  {/* Header */}
-            <Box sx={{ 
-              p: 2, 
-              borderBottom: 1, 
-              borderColor: 'divider',
-              backgroundColor: 'background.paper',
-                    flexShrink: 0,
-            }}>
-              {selectedChannel ? (
-                <>
-                  <Typography variant="h6"># {selectedChannel.name}</Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Welcome to the {selectedChannel.name} channel!
-                  </Typography>
-                </>
+              {showSearchResults ? (
+                <SearchResults
+                  query={searchQuery}
+                  results={searchResults}
+                  loading={isSearching}
+                  onMessageClick={handleSearchResultClick}
+                />
               ) : (
-                <>
-                  <Typography variant="h6">{selectedUser.name}</Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Direct message with {selectedUser.name}
-                  </Typography>
-                </>
-              )}
-            </Box>
+                (selectedChannel || selectedUser) && (
+                  <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    height: '100%',
+                  }}>
+                    {/* Header */}
+                    <Box sx={{ 
+                      p: 2, 
+                      borderBottom: 1, 
+                      borderColor: 'divider',
+                      backgroundColor: 'background.paper',
+                      flexShrink: 0,
+                    }}>
+                      {selectedChannel ? (
+                        <>
+                          <Typography variant="h6"># {selectedChannel.name}</Typography>
+                          <Typography variant="body2" color="textSecondary">
+                            Welcome to the {selectedChannel.name} channel!
+                          </Typography>
+                        </>
+                      ) : (
+                        <>
+                          <Typography variant="h6">{selectedUser.name}</Typography>
+                          <Typography variant="body2" color="textSecondary">
+                            Direct message with {selectedUser.name}
+                          </Typography>
+                        </>
+                      )}
+                    </Box>
 
-                  {/* Messages Area */}
-                  <Box sx={{ flexGrow: 1, minHeight: 0, overflow: 'hidden' }}>
-              {selectedChannel ? (
-                <Messaging 
-                  channelId={selectedChannel.id} 
-                  channelName={selectedChannel.name}
-                  workspaceId={currentWorkspace.id}
-                  onThreadClick={handleThreadClick}
-                />
-              ) : (
-                <DirectMessaging 
-                  recipientId={selectedUser.id}
-                  recipientName={selectedUser.name}
-                  workspaceId={currentWorkspace.id}
-                  onThreadClick={handleThreadClick}
-                />
+                    {/* Messages Area */}
+                    <Box sx={{ flexGrow: 1, minHeight: 0, overflow: 'hidden' }}>
+                      {selectedChannel ? (
+                        <Messaging 
+                          channelId={selectedChannel.id} 
+                          channelName={selectedChannel.name}
+                          workspaceId={currentWorkspace.id}
+                          onThreadClick={handleThreadClick}
+                        />
+                      ) : (
+                        <DirectMessaging 
+                          recipientId={selectedUser.id}
+                          recipientName={selectedUser.name}
+                          workspaceId={currentWorkspace.id}
+                          onThreadClick={handleThreadClick}
+                        />
+                      )}
+                    </Box>
+                  </Box>
+                )
               )}
-            </Box>
-          </Box>
-        )}
             </Box>
 
             {/* Side Panel */}
