@@ -49,6 +49,9 @@ import ChatIcon from '@mui/icons-material/Chat';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import ChatBubbleIcon from '@mui/icons-material/ChatBubbleOutline';
 import ChatBubbleFilledIcon from '@mui/icons-material/ChatBubble';
+import SidePanel from '../components/SidePanel';
+import HelpContent from '../components/HelpContent';
+import RepliesContent from '../components/RepliesContent';
 
 function UserPage() {
   const navigate = useNavigate();
@@ -83,6 +86,11 @@ function UserPage() {
   const [isInviteMembersOpen, setIsInviteMembersOpen] = useState(false);
   const [inviteLink, setInviteLink] = useState('');
   const [activeInvites, setActiveInvites] = useState([]);
+  const [sidePanelState, setSidePanelState] = useState({
+    type: null, // 'help' | 'replies' | null
+    isOpen: false,
+    data: null
+  });
 
   useEffect(() => {
     fetchUserData();
@@ -344,12 +352,20 @@ function UserPage() {
     handleWorkspaceSwitcherClose();
   };
 
-  const handleHelpClick = () => {
-    setIsHelpOpen(!isHelpOpen);
+  const handleSidePanelClose = () => {
+    setSidePanelState({
+      type: null,
+      isOpen: false,
+      data: null
+    });
   };
 
-  const handleHelpClose = () => {
-    setIsHelpOpen(false);
+  const handleHelpClick = () => {
+    setSidePanelState({
+      type: 'help',
+      isOpen: true,
+      data: null
+    });
   };
 
   const handleWorkspaceMenuClick = (event) => {
@@ -520,6 +536,14 @@ function UserPage() {
       fetchActiveInvites();
     }
   }, [isInviteMembersOpen]);
+
+  const handleThreadClick = (message) => {
+    setSidePanelState({
+      type: 'replies',
+      isOpen: true,
+      data: message
+    });
+  };
 
   return (
     <Box sx={{ 
@@ -1344,7 +1368,7 @@ function UserPage() {
           }}>
             {/* Main Content Area */}
             <Box sx={{ 
-              width: isHelpOpen ? 'calc(100% - 400px)' : '100%',
+              width: sidePanelState.isOpen ? 'calc(100% - 400px)' : '100%',
               transition: 'width 0.3s ease',
               display: 'flex',
               flexDirection: 'column',
@@ -1388,13 +1412,15 @@ function UserPage() {
                 <Messaging 
                   channelId={selectedChannel.id} 
                   channelName={selectedChannel.name}
-                        workspaceId={currentWorkspace.id}
+                  workspaceId={currentWorkspace.id}
+                  onThreadClick={handleThreadClick}
                 />
               ) : (
                 <DirectMessaging 
                   recipientId={selectedUser.id}
                   recipientName={selectedUser.name}
-                        workspaceId={currentWorkspace.id}
+                  workspaceId={currentWorkspace.id}
+                  onThreadClick={handleThreadClick}
                 />
               )}
             </Box>
@@ -1402,52 +1428,22 @@ function UserPage() {
         )}
             </Box>
 
-            {/* Help Panel */}
-            <Box
-              sx={{
-                width: 400,
-                bgcolor: 'background.paper',
-                transform: isHelpOpen ? 'translateX(0)' : 'translateX(100%)',
-                transition: 'transform 0.3s ease',
-                position: 'absolute',
-                right: 0,
-                top: 0,
-                bottom: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                borderLeft: 1,
-                borderColor: 'divider',
-              }}
+            {/* Side Panel */}
+            <SidePanel
+              open={sidePanelState.isOpen}
+              onClose={handleSidePanelClose}
+              type={sidePanelState.type}
+              title={
+                sidePanelState.type === 'help' ? 'Help' :
+                sidePanelState.type === 'replies' ? 'Thread' :
+                ''
+              }
             >
-              {/* Help Header */}
-              <Box sx={{ 
-                p: 2, 
-                borderBottom: 1, 
-                borderColor: 'divider',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}>
-                <Typography variant="h6">
-                  Help Panel
-                </Typography>
-                <IconButton onClick={handleHelpClose} sx={{ color: 'grey.500' }}>
-                  <CloseIcon />
-                </IconButton>
-              </Box>
-
-              {/* Help Content */}
-              <Box sx={{ 
-                flexGrow: 1,
-                overflow: 'auto',
-                p: 3,
-              }}>
-                {/* Placeholder for help content */}
-                <Typography color="grey.600">
-                  Help content coming soon...
-                </Typography>
-              </Box>
-            </Box>
+              {sidePanelState.type === 'help' && <HelpContent />}
+              {sidePanelState.type === 'replies' && (
+                <RepliesContent parentMessage={sidePanelState.data} />
+              )}
+            </SidePanel>
           </Box>
         </Box>
       </Box>

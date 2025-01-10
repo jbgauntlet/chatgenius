@@ -1,27 +1,29 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import {
   Box,
   Typography,
   IconButton,
   CircularProgress,
   Tooltip,
+  Avatar
 } from '@mui/material';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 import DownloadIcon from '@mui/icons-material/Download';
 import CloseIcon from '@mui/icons-material/Close';
+import SendIcon from '@mui/icons-material/Send';
 import ReactQuill from 'react-quill';
 import { supabase } from '../supabaseClient';
 import 'react-quill/dist/quill.snow.css';
 import './Messaging.css';
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import MessageInput from './MessageInput';
 
-export default function Messaging({ channelId, channelName, workspaceId }) {
+export default function Messaging({ channelId, channelName, workspaceId, onThreadClick }) {
   const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState("");
   const [uploading, setUploading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploadProgress, setUploadProgress] = useState({});
-  const fileInputRef = useRef(null);
   const messageEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -75,6 +77,10 @@ export default function Messaging({ channelId, channelName, workspaceId }) {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    setSelectedFiles([]);
+  }, [channelId]);
 
   async function fetchMessages() {
     const { data, error } = await supabase
@@ -142,8 +148,8 @@ export default function Messaging({ channelId, channelName, workspaceId }) {
     }
   };
 
-  const sendMessage = async () => {
-    if (newMessage.trim() === "" && selectedFiles.length === 0) return;
+  const handleSendMessage = async (message) => {
+    if (!message.trim() && selectedFiles.length === 0) return;
 
     setUploading(true);
     setUploadProgress({});
@@ -165,7 +171,7 @@ export default function Messaging({ channelId, channelName, workspaceId }) {
         channel_id: channelId,
         workspace_id: workspaceId,
         sender_id: user.id,
-        content: newMessage,
+        content: message,
         attachments
       };
 
@@ -184,7 +190,6 @@ export default function Messaging({ channelId, channelName, workspaceId }) {
         console.error('Error sending message:', error);
       } else {
         setMessages(prev => [...prev, data]);
-        setNewMessage("");
         setSelectedFiles([]);
         scrollToBottom();
       }
@@ -208,16 +213,30 @@ export default function Messaging({ channelId, channelName, workspaceId }) {
     return data.signedUrl;
   };
 
-  const AttachmentItem = ({ attachment }) => {
+  const AttachmentItem = memo(({ attachment }) => {
     const [signedUrl, setSignedUrl] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const isImage = attachment.type.startsWith('image/');
+    const urlExpiryRef = useRef(null);
     
     const refreshSignedUrl = async () => {
+      // If we have a valid URL that hasn't expired, don't refresh
+      if (signedUrl && urlExpiryRef.current && Date.now() < urlExpiryRef.current) {
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
       try {
-        const url = await getSignedUrl(attachment.path);
-        setSignedUrl(url);
+        const { data, error } = await supabase.storage
+          .from('private-files')
+          .createSignedUrl(attachment.path, 604800); // URL valid for 7 days (maximum allowed)
+
+        if (error) throw error;
+        
+        setSignedUrl(data.signedUrl);
+        // Set expiry time to slightly less than the actual expiry to be safe
+        urlExpiryRef.current = Date.now() + (604800 * 1000 * 0.9);
       } catch (error) {
         console.error('Error refreshing signed URL:', error);
       } finally {
@@ -395,124 +414,172 @@ export default function Messaging({ channelId, channelName, workspaceId }) {
         </Tooltip>
       </Box>
     );
-  };
+  });
 
   const renderAttachment = (attachment) => {
     return <AttachmentItem key={attachment.path} attachment={attachment} />;
   };
 
-  return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ 
-        flexGrow: 1, 
-        overflowY: 'auto', 
-        padding: '20px',
+  const handleReplyClick = (message) => {
+    onThreadClick(message);
+  };
+
+  const renderMessage = (message) => (
+    <Box
+      key={message.id}
+      sx={{
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: '#fff'
-      }}>
-        {messages.map((msg) => (
-          <div key={msg.id} className="message-container">
-            <div className="message-header">
-              <div className="message-user-info">
-                <div className="message-avatar">
-                  {msg.users?.name?.charAt(0).toUpperCase()}
-                </div>
-                <span className="message-name">{msg.users?.name || 'Unknown User'}</span>
-              </div>
-              <span className="message-timestamp">
-                {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            </div>
-            <div className="message-content">
-              <span dangerouslySetInnerHTML={{ __html: msg.content }} />
-              {msg.attachments && msg.attachments.map(attachment => renderAttachment(attachment))}
-            </div>
-          </div>
-        ))}
-        <div ref={messageEndRef} />
-      </div>
-      <div style={{ 
-        borderTop: '1px solid #e0e0e0',
-        padding: '20px',
-        backgroundColor: '#fff',
-      }}>
-        {selectedFiles.length > 0 && (
-          <Box sx={{ mb: 2 }}>
-            {selectedFiles.map((file, index) => (
-              <Box
-                key={index}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  mb: 1,
-                  p: 1,
-                  bgcolor: 'grey.100',
-                  borderRadius: 1,
-                  position: 'relative',
-                  overflow: 'hidden'
-                }}
-              >
-                <AttachFileIcon sx={{ color: 'primary.main' }} />
-                <Typography variant="body2">{file.name}</Typography>
-                <IconButton 
-                  size="small" 
-                  onClick={() => removeSelectedFile(index)}
-                  sx={{ ml: 'auto' }}
-                  disabled={uploading}
-                >
-                  <CloseIcon fontSize="small" />
-                </IconButton>
-                {uploading && uploadProgress[file.name] !== undefined && (
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      bottom: 0,
-                      left: 0,
-                      width: `${uploadProgress[file.name]}%`,
-                      height: '2px',
-                      bgcolor: 'primary.main',
-                      transition: 'width 0.3s ease'
-                    }}
-                  />
-                )}
-              </Box>
-            ))}
+        mb: 2,
+        '&:hover': {
+          '& .message-actions': {
+            opacity: 1,
+          },
+        },
+      }}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+        <Avatar sx={{ width: 36, height: 36 }}>
+          {message.users.name.charAt(0).toUpperCase()}
+        </Avatar>
+        <Box sx={{ flexGrow: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+            <Typography variant="subtitle2">
+              {message.users.name}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {new Date(message.created_at).toLocaleTimeString()}
+            </Typography>
           </Box>
-        )}
-        <div className="editor-container">
-          <input
-            type="file"
-            ref={fileInputRef}
-            style={{ display: 'none' }}
-            onChange={handleFileSelect}
-            multiple
+          <Typography
+            dangerouslySetInnerHTML={{ __html: message.content }}
+            sx={{ wordBreak: 'break-word' }}
           />
-          <ReactQuill
-            key={channelId}
-            theme="snow"
-            value={newMessage}
-            onChange={setNewMessage}
-            placeholder={`Message #${channelName || '...'}`}
-          />
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          {message.attachments?.length > 0 && (
+            <Box sx={{ mt: 1 }}>
+              {message.attachments.map((attachment, index) => (
+                <AttachmentItem key={index} attachment={attachment} />
+              ))}
+            </Box>
+          )}
+        </Box>
+        <Box 
+          className="message-actions"
+          sx={{ 
+            opacity: 0, 
+            transition: 'opacity 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}
+        >
+          <Tooltip title="Reply in thread">
             <IconButton 
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
+              size="small"
+              onClick={() => handleReplyClick(message)}
+              sx={{ color: 'grey.500' }}
             >
-              <AttachFileIcon />
+              <ChatBubbleOutlineIcon fontSize="small" />
+              {message.thread_count > 0 && (
+                <Typography 
+                  variant="caption" 
+                  sx={{ ml: 0.5 }}
+                >
+                  {message.thread_count}
+                </Typography>
+              )}
             </IconButton>
-            <button 
-              className="send-button" 
-              onClick={sendMessage}
-              disabled={uploading}
+          </Tooltip>
+        </Box>
+      </Box>
+      {message.thread_count > 0 && (
+        <Box 
+          onClick={() => handleReplyClick(message)}
+          sx={{ 
+            ml: 7,
+            mt: 0.5,
+            color: 'primary.main',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5,
+            '&:hover': {
+              textDecoration: 'underline',
+            },
+          }}
+        >
+          <ChatBubbleOutlineIcon fontSize="small" />
+          <Typography variant="body2">
+            {message.thread_count} {message.thread_count === 1 ? 'reply' : 'replies'}
+          </Typography>
+        </Box>
+      )}
+    </Box>
+  );
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Messages Area */}
+      <Box sx={{ flexGrow: 1, overflow: 'auto', p: 2 }}>
+        {messages.map(message => renderMessage(message))}
+        <div ref={messageEndRef} />
+      </Box>
+
+      {/* File Upload Preview */}
+      {selectedFiles.length > 0 && (
+        <Box sx={{ mb: 2 }}>
+          {selectedFiles.map((file, index) => (
+            <Box
+              key={index}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                mb: 1,
+                p: 1,
+                bgcolor: 'grey.100',
+                borderRadius: 1,
+                position: 'relative',
+                overflow: 'hidden'
+              }}
             >
-              {uploading ? <CircularProgress size={20} /> : 'Send'}
-            </button>
-          </Box>
-        </div>
-      </div>
-    </div>
+              <AttachFileIcon sx={{ color: 'primary.main' }} />
+              <Typography variant="body2">{file.name}</Typography>
+              <IconButton 
+                size="small" 
+                onClick={() => removeSelectedFile(index)}
+                sx={{ ml: 'auto' }}
+                disabled={uploading}
+              >
+                <CloseIcon fontSize="small" />
+              </IconButton>
+              {uploading && uploadProgress[file.name] !== undefined && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    width: `${uploadProgress[file.name]}%`,
+                    height: '2px',
+                    bgcolor: 'primary.main',
+                    transition: 'width 0.3s ease'
+                  }}
+                />
+              )}
+            </Box>
+          ))}
+        </Box>
+      )}
+
+      {/* Message Input */}
+      <MessageInput
+        channelId={channelId}
+        channelName={channelName}
+        onSendMessage={handleSendMessage}
+        onFileSelect={handleFileSelect}
+        uploading={uploading}
+        selectedFiles={selectedFiles}
+      />
+    </Box>
   );
 }

@@ -10,17 +10,15 @@ import AttachFileIcon from '@mui/icons-material/AttachFile';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 import DownloadIcon from '@mui/icons-material/Download';
 import CloseIcon from '@mui/icons-material/Close';
-import ReactQuill from 'react-quill';
 import { supabase } from '../supabaseClient';
 import 'react-quill/dist/quill.snow.css';
+import MessageInput from './MessageInput';
 
 export default function DirectMessaging({ recipientId, recipientName, workspaceId }) {
   const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState("");
   const [uploading, setUploading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploadProgress, setUploadProgress] = useState({});
-  const fileInputRef = useRef(null);
   const messageEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -172,8 +170,8 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
     }
   };
 
-  const sendMessage = async () => {
-    if (newMessage.trim() === "" && selectedFiles.length === 0) return;
+  const handleSendMessage = async (message) => {
+    if (!message.trim() && selectedFiles.length === 0) return;
 
     setUploading(true);
     setUploadProgress({});
@@ -195,7 +193,7 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
         sender_id: user.id,
         recipient_id: recipientId,
         workspace_id: workspaceId,
-        content: newMessage,
+        content: message,
         attachments
       };
 
@@ -217,7 +215,6 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
         console.error('Error sending message:', error);
       } else {
         setMessages(prev => [...prev, data]);
-        setNewMessage("");
         setSelectedFiles([]);
         scrollToBottom();
       }
@@ -465,87 +462,62 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
         ))}
         <div ref={messageEndRef} />
       </div>
-      <div style={{ 
-        borderTop: '1px solid #e0e0e0',
-        padding: '20px',
-        backgroundColor: '#fff',
-      }}>
-        {selectedFiles.length > 0 && (
-          <Box sx={{ mb: 2 }}>
-            {selectedFiles.map((file, index) => (
-              <Box
-                key={index}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  mb: 1,
-                  p: 1,
-                  bgcolor: 'grey.100',
-                  borderRadius: 1,
-                  position: 'relative',
-                  overflow: 'hidden'
-                }}
+
+      {/* File Upload Preview */}
+      {selectedFiles.length > 0 && (
+        <Box sx={{ mb: 2 }}>
+          {selectedFiles.map((file, index) => (
+            <Box
+              key={index}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                mb: 1,
+                p: 1,
+                bgcolor: 'grey.100',
+                borderRadius: 1,
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+            >
+              <AttachFileIcon sx={{ color: 'primary.main' }} />
+              <Typography variant="body2">{file.name}</Typography>
+              <IconButton 
+                size="small" 
+                onClick={() => removeSelectedFile(index)}
+                sx={{ ml: 'auto' }}
+                disabled={uploading}
               >
-                <AttachFileIcon sx={{ color: 'primary.main' }} />
-                <Typography variant="body2">{file.name}</Typography>
-                <IconButton 
-                  size="small" 
-                  onClick={() => removeSelectedFile(index)}
-                  sx={{ ml: 'auto' }}
-                  disabled={uploading}
-                >
-                  <CloseIcon fontSize="small" />
-                </IconButton>
-                {uploading && uploadProgress[file.name] !== undefined && (
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      bottom: 0,
-                      left: 0,
-                      width: `${uploadProgress[file.name]}%`,
-                      height: '2px',
-                      bgcolor: 'primary.main',
-                      transition: 'width 0.3s ease'
-                    }}
-                  />
-                )}
-              </Box>
-            ))}
-          </Box>
-        )}
-        <div className="editor-container">
-          <input
-            type="file"
-            ref={fileInputRef}
-            style={{ display: 'none' }}
-            onChange={handleFileSelect}
-            multiple
-          />
-          <ReactQuill
-            key={recipientId}
-            theme="snow"
-            value={newMessage}
-            onChange={setNewMessage}
-            placeholder={`Message ${recipientName || '...'}`}
-          />
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <IconButton 
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-            >
-              <AttachFileIcon />
-            </IconButton>
-            <button 
-              className="send-button" 
-              onClick={sendMessage}
-              disabled={uploading}
-            >
-              {uploading ? <CircularProgress size={20} /> : 'Send'}
-            </button>
-          </Box>
-        </div>
-      </div>
+                <CloseIcon fontSize="small" />
+              </IconButton>
+              {uploading && uploadProgress[file.name] !== undefined && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    width: `${uploadProgress[file.name]}%`,
+                    height: '2px',
+                    bgcolor: 'primary.main',
+                    transition: 'width 0.3s ease'
+                  }}
+                />
+              )}
+            </Box>
+          ))}
+        </Box>
+      )}
+
+      {/* Message Input */}
+      <MessageInput
+        channelId={recipientId}
+        channelName={recipientName}
+        onSendMessage={handleSendMessage}
+        onFileSelect={handleFileSelect}
+        uploading={uploading}
+        selectedFiles={selectedFiles}
+      />
     </div>
   );
 } 
