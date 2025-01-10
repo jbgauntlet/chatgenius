@@ -33,40 +33,6 @@ export default function RepliesContent({ parentMessage }) {
     }
   }, [parentMessage]);
 
-  // Add effect to scroll to bottom when replies change
-  useEffect(() => {
-    // Use a small delay to ensure images have started loading
-    const timeoutId = setTimeout(scrollToBottom, 100);
-    return () => clearTimeout(timeoutId);
-  }, [replies]);
-
-  // Add another effect to scroll when images finish loading
-  useEffect(() => {
-    const handleImageLoad = () => {
-      scrollToBottom();
-    };
-
-    // Add load event listeners to all images in the replies
-    const images = document.querySelectorAll('.reply-image');
-    images.forEach(img => {
-      img.addEventListener('load', handleImageLoad);
-    });
-
-    return () => {
-      // Clean up listeners
-      images.forEach(img => {
-        img.removeEventListener('load', handleImageLoad);
-      });
-    };
-  }, [replies]);
-
-  // Add effect to scroll when selected files change
-  useEffect(() => {
-    if (selectedFiles.length > 0) {
-      scrollToBottom();
-    }
-  }, [selectedFiles]);
-
   const fetchReplies = async () => {
     if (!parentMessage) return;
 
@@ -209,6 +175,8 @@ export default function RepliesContent({ parentMessage }) {
       setReplies(prev => [...prev, data]);
       setSelectedFiles([]);
       setUploadProgress({});
+      // Only scroll to bottom after sending a message
+      scrollToBottom();
     } catch (error) {
       console.error('Error sending reply:', error);
     } finally {

@@ -96,6 +96,7 @@ function UserPage() {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [currentSearchQuery, setCurrentSearchQuery] = useState('');
 
   useEffect(() => {
     fetchUserData();
@@ -553,6 +554,7 @@ function UserPage() {
   const handleGlobalSearch = async (query) => {
     setShowSearchResults(true);
     setIsSearching(true);
+    setCurrentSearchQuery(query);
 
     try {
       // Search in both messages and user_messages tables
@@ -599,6 +601,60 @@ function UserPage() {
     } finally {
       setIsSearching(false);
     }
+  };
+
+  // Add search result click handler
+  const handleSearchResultClick = async (message) => {
+    const isDirectMessage = !message.channel_id;
+    const isThreadReply = Boolean(message.parent_message_id);
+
+    if (isDirectMessage) {
+      // For DMs, set the recipient as selected user
+      const recipient = message.sender_id === currentUser?.id ? 
+        { id: message.recipient_id, name: message.recipient.name } :
+        { id: message.sender_id, name: message.sender.name };
+      setSelectedUser(recipient);
+      setSelectedChannel(null);
+    } else {
+      // For channel messages, set the channel
+      setSelectedChannel({ id: message.channel_id, name: message.channel.name });
+      setSelectedUser(null);
+    }
+
+    // If it's a thread reply, open the thread panel
+    if (isThreadReply) {
+      // Fetch the parent message first
+      const { data: parentMessage } = await supabase
+        .from(isDirectMessage ? 'user_messages' : 'messages')
+        .select(`
+          *,
+          sender:sender_id (
+            name
+          ),
+          ${isDirectMessage ? `
+            recipient:recipient_id (
+              name
+            )
+          ` : `
+            channel:channel_id (
+              name
+            )
+          `}
+        `)
+        .eq('id', message.parent_message_id)
+        .single();
+
+      if (parentMessage) {
+        setSidePanelState({
+          type: 'replies',
+          isOpen: true,
+          data: parentMessage
+        });
+      }
+    }
+
+    // Clear search results
+    setShowSearchResults(false);
   };
 
   return (
@@ -1417,7 +1473,7 @@ function UserPage() {
             }}>
               {showSearchResults ? (
                 <SearchResults
-                  query={searchQuery}
+                  query={currentSearchQuery}
                   results={searchResults}
                   loading={isSearching}
                   onMessageClick={handleSearchResultClick}
