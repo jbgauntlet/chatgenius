@@ -54,6 +54,7 @@ import HelpContent from '../components/HelpContent';
 import RepliesContent from '../components/RepliesContent';
 import SearchResults from '../components/SearchResults';
 import SearchBar from '../components/SearchBar';
+import HeroSidebar from '../components/HeroSidebar';
 
 function UserPage() {
   const navigate = useNavigate();
@@ -103,6 +104,99 @@ function UserPage() {
     fetchWorkspaces();
     fetchChannels();
     fetchUsers();
+
+    // Set up real-time subscription for user presence
+    const presenceChannel = supabase
+      .channel('user_presence_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'user_presence'
+      }, async (payload) => {
+        console.log('Presence change received:', payload);
+        // Update the users list with new presence data
+        setUsers(prevUsers => {
+          console.log('Previous users:', prevUsers);
+          const updatedUsers = prevUsers.map(user => {
+            if (user.id === payload.new.user_id) {
+              console.log('Updating user presence for:', user.name);
+              return {
+                ...user,
+                user_presence: {
+                  status: payload.new.status,
+                  status_message: payload.new.status_message,
+                  last_seen: payload.new.last_seen
+                }
+              };
+            }
+            return user;
+          });
+          console.log('Updated users:', updatedUsers);
+          return updatedUsers;
+        });
+      })
+      .subscribe();
+
+    // Set up presence update interval
+    const updatePresence = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      console.log('Updating presence for user:', user.id);
+      const { data, error } = await supabase.rpc('update_user_presence', {
+        user_id_param: user.id,
+        status_param: 'online'
+      });
+      
+      if (error) {
+        console.error('Error updating presence:', error);
+      } else {
+        console.log('Presence updated successfully');
+      }
+    };
+
+    // Update presence immediately and set up interval
+    updatePresence();
+    const presenceInterval = setInterval(updatePresence, 30000); // Update every 30 seconds
+
+    // Set up visibility change handler
+    const handleVisibilityChange = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      if (document.hidden) {
+        console.log('Tab hidden, setting status to away');
+        supabase.rpc('update_user_presence', {
+          user_id_param: user.id,
+          status_param: 'away'
+        });
+      } else {
+        console.log('Tab visible, setting status to online');
+        supabase.rpc('update_user_presence', {
+          user_id_param: user.id,
+          status_param: 'online'
+        });
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      supabase.removeChannel(presenceChannel);
+      clearInterval(presenceInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      // Set status to offline when component unmounts
+      const handleUnmount = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          console.log('Component unmounting, setting status to offline');
+          await supabase.rpc('update_user_presence', {
+            user_id_param: user.id,
+            status_param: 'offline'
+          });
+        }
+      };
+      handleUnmount();
+    };
   }, []);
 
   // Add effect to fetch role when workspace changes
@@ -130,7 +224,14 @@ function UserPage() {
     if (user) {
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('*')
+        .select(`
+          *,
+          user_presence (
+            status,
+            status_message,
+            last_seen
+          )
+        `)
         .eq('id', user.id)
         .single();
 
@@ -174,14 +275,24 @@ function UserPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    console.log('Fetching users with presence data');
     const { data, error } = await supabase
       .from('users')
-      .select('id, name')
+      .select(`
+        id, 
+        name,
+        user_presence!inner (
+          status,
+          status_message,
+          last_seen
+        )
+      `)
       .neq('id', user.id); // Don't include the current user
 
     if (error) {
       console.error('Error fetching users:', error);
     } else {
+      console.log('Fetched users with presence:', data);
       setUsers(data);
     }
   };
@@ -732,500 +843,14 @@ function UserPage() {
         minHeight: 0,
       }}>
         {/* Hero Sidebar */}
-      <Drawer
-        variant="permanent"
-        sx={{
-            width: '70px',
-          flexShrink: 0,
-            height: '100%',
-            '& .MuiDrawer-paper': { 
-              position: 'relative',
-              width: '70px', 
-              boxSizing: 'border-box',
-              backgroundColor: 'transparent',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              pt: 1,
-              pb: 3,
-              border: 'none',
-              height: '100%',
-            },
-          }}
-        >
-          {/* Top section with workspace button */}
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', mb: 3 }}>
-            {workspaces.length === 0 ? (
-              // Show create workspace button if user has no workspaces
-              <Tooltip title="Create Workspace" placement="right">
-                <IconButton
-                  onClick={() => setIsCreateWorkspaceOpen(true)}
-                  disableRipple
-                  sx={{ 
-                    width: 36,
-                    height: 36,
-                    borderRadius: 1.5,
-                    backgroundColor: 'grey.800',
-                    color: 'grey.100',
-                    '&:hover': {
-                      backgroundColor: 'grey.700',
-                      '& > svg': {
-                        transform: 'scale(1.15)',
-                      },
-                    },
-                    '& > svg': {
-                      transition: 'transform 0.2s ease',
-                    },
-                  }}
-                >
-                  <AddIcon />
-                </IconButton>
-              </Tooltip>
-            ) : (
-              // Show current workspace button with dropdown
-              <>
-                <IconButton
-                  onClick={handleWorkspaceSwitcherClick}
-                  disableRipple
-                  sx={{ 
-                    width: 36,
-                    height: 36,
-                    borderRadius: 1.5,
-                    backgroundColor: 'primary.main',
-                    color: 'grey.100',
-                    fontSize: '1.2rem',
-                    fontWeight: 'bold',
-                    '&:hover': {
-                      backgroundColor: 'primary.dark',
-                      '& > svg': {
-                        transform: 'scale(1.15)',
-                      },
-                    },
-                    '& > svg': {
-                      transition: 'transform 0.2s ease',
-                    },
-                  }}
-                >
-                  {currentWorkspace?.name?.charAt(0).toUpperCase()}
-                </IconButton>
-                <Popper
-                  open={Boolean(workspaceSwitcherAnchor)}
-                  anchorEl={workspaceSwitcherAnchor}
-                  placement="right-start"
-                  transition
-                  sx={{ zIndex: (theme) => theme.zIndex.drawer + 3 }}
-                >
-                  {({ TransitionProps }) => (
-                    <Grow {...TransitionProps}>
-                      <Paper 
-                        sx={{ 
-                          width: 200,
-                          maxHeight: 'calc(100vh - 100px)',
-                          overflow: 'auto',
-                          mt: 0.5,
-                          ml: 0.5,
-                          backgroundColor: 'grey.800',
-                        }}
-                      >
-                        <ClickAwayListener onClickAway={handleWorkspaceSwitcherClose}>
-                          <MenuList>
-                            <Typography
-                              variant="subtitle2"
-                              sx={{
-                                px: 2,
-                                py: 1,
-                                fontWeight: 'bold',
-                                color: 'grey.400',
-                                fontSize: '0.75rem',
-                                textTransform: 'uppercase',
-                              }}
-                            >
-                              Workspaces
-                            </Typography>
-                            {workspaces.map((workspace) => (
-                              <MenuItem
-                                key={workspace.id}
-                                onClick={() => handleWorkspaceSelect(workspace)}
-                                sx={{ 
-                                  color: 'grey.400',
-                                  fontSize: '0.875rem',
-                                  py: 0.75,
-                                  '&:hover': {
-                                    backgroundColor: 'grey.700',
-                                  },
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'center',
-                                }}
-                              >
-                                {workspace.name}
-                                {workspace.id === currentWorkspace?.id && (
-                                  <CheckIcon sx={{ ml: 1, fontSize: '1rem' }} />
-                                )}
-                              </MenuItem>
-                            ))}
-                            <MenuItem
-                              onClick={() => {
-                                handleWorkspaceSwitcherClose();
-                                setIsCreateWorkspaceOpen(true);
-                              }}
-                              sx={{ 
-                                color: 'grey.400',
-                                fontSize: '0.875rem',
-                                py: 0.75,
-                                '&:hover': {
-                                  backgroundColor: 'grey.700',
-                                },
-                                borderTop: 1,
-                                borderColor: 'grey.700',
-                                display: 'flex',
-                                alignItems: 'center',
-                              }}
-                            >
-                              <ListItemIcon sx={{ color: 'grey.400', minWidth: 36 }}>
-                                <AddIcon fontSize="small" />
-                              </ListItemIcon>
-                              Create Workspace
-                            </MenuItem>
-                          </MenuList>
-                        </ClickAwayListener>
-                      </Paper>
-                    </Grow>
-                  )}
-                </Popper>
-              </>
-            )}
-          </Box>
-
-          {/* Activity section */}
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', gap: 1.75 }}>
-            {/* Home button */}
-            <Box 
-              onClick={() => setSelectedHeroButton('home')}
-              sx={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                alignItems: 'center',
-                cursor: 'pointer',
-                '&:hover': {
-                  '& .MuiIconButton-root': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  },
-                  '& .MuiTypography-root': {
-                    color: '#fff',
-                  },
-                },
-                '&:focus': {
-                  outline: 'none',
-                },
-              }}
-            >
-              <IconButton
-                disableRipple
-                sx={{ 
-                  width: 36,
-                  height: 36,
-                  borderRadius: 1.5,
-                  backgroundColor: selectedHeroButton === 'home' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                  color: '#fff',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    '& > svg': {
-                      transform: 'scale(1.15)',
-                    },
-                  },
-                  '&:focus': {
-                    outline: 'none',
-                  },
-                  '& > svg': {
-                    transition: 'transform 0.2s ease',
-                    fontSize: 20,
-                  },
-                }}
-              >
-                {selectedHeroButton === 'home' ? <HomeFilledIcon /> : <HomeIcon />}
-              </IconButton>
-              <Typography 
-                variant="caption" 
-                sx={{ 
-                  color: '#fff',
-                  fontSize: '0.6875rem', 
-                  mt: 0.75,
-                  fontWeight: 500,
-                  transition: 'color 0.2s',
-                  userSelect: 'none',
-                  lineHeight: '12px',
-                }}
-              >
-                Home
-              </Typography>
-            </Box>
-
-            {/* DMs button */}
-            <Box 
-              onClick={() => setSelectedHeroButton('dms')}
-              sx={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                alignItems: 'center',
-                cursor: 'pointer',
-                '&:hover': {
-                  '& .MuiIconButton-root': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  },
-                  '& .MuiTypography-root': {
-                    color: '#fff',
-                  },
-                },
-                '&:focus': {
-                  outline: 'none',
-                },
-              }}
-            >
-              <IconButton
-                disableRipple
-                sx={{ 
-                  width: 36,
-                  height: 36,
-                  borderRadius: 1.5,
-                  backgroundColor: selectedHeroButton === 'dms' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                  color: '#fff',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    '& > svg': {
-                      transform: 'scale(1.15)',
-                    },
-                  },
-                  '&:focus': {
-                    outline: 'none',
-                  },
-                  '& > svg': {
-                    transition: 'transform 0.2s ease',
-                    fontSize: 20,
-                  },
-                }}
-              >
-                {selectedHeroButton === 'dms' ? <ChatBubbleFilledIcon /> : <ChatBubbleIcon />}
-              </IconButton>
-              <Typography 
-                variant="caption" 
-                sx={{ 
-                  color: '#fff',
-                  fontSize: '0.6875rem', 
-                  mt: 0.75,
-                  fontWeight: 500,
-                  transition: 'color 0.2s',
-                  userSelect: 'none',
-                  lineHeight: '12px',
-                }}
-              >
-                DMs
-              </Typography>
-            </Box>
-
-            {/* Activity button */}
-            <Box 
-              onClick={() => setSelectedHeroButton('activity')}
-              sx={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                alignItems: 'center',
-                cursor: 'pointer',
-                '&:hover': {
-                  '& .MuiIconButton-root': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  },
-                  '& .MuiTypography-root': {
-                    color: '#fff',
-                  },
-                },
-                '&:focus': {
-                  outline: 'none',
-                },
-              }}
-            >
-              <IconButton
-                disableRipple
-                sx={{ 
-                  width: 36,
-                  height: 36,
-                  borderRadius: 1.5,
-                  backgroundColor: selectedHeroButton === 'activity' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                  color: '#fff',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    '& > svg': {
-                      transform: 'scale(1.15)',
-                    },
-                  },
-                  '&:focus': {
-                    outline: 'none',
-                  },
-                  '& > svg': {
-                    transition: 'transform 0.2s ease',
-                    fontSize: 20,
-                  },
-                }}
-              >
-                {selectedHeroButton === 'activity' ? <NotificationsFilledIcon /> : <NotificationsIcon />}
-              </IconButton>
-              <Typography 
-                variant="caption" 
-                sx={{ 
-                  color: '#fff',
-                  fontSize: '0.6875rem', 
-                  mt: 0.75,
-                  fontWeight: 500,
-                  transition: 'color 0.2s',
-                  userSelect: 'none',
-                  lineHeight: '12px',
-                }}
-              >
-                Activity
-              </Typography>
-            </Box>
-
-            {/* More button */}
-            <Box 
-              onClick={() => setSelectedHeroButton('more')}
-              sx={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                alignItems: 'center',
-                cursor: 'pointer',
-                '&:hover': {
-                  '& .MuiIconButton-root': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  },
-                  '& .MuiTypography-root': {
-                    color: '#fff',
-                  },
-                },
-                '&:focus': {
-                  outline: 'none',
-                },
-              }}
-            >
-              <IconButton
-                disableRipple
-                sx={{ 
-                  width: 36,
-                  height: 36,
-                  borderRadius: 1.5,
-                  backgroundColor: selectedHeroButton === 'more' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                  color: '#fff',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    '& > svg': {
-                      transform: 'scale(1.15)',
-                    },
-                  },
-                  '&:focus': {
-                    outline: 'none',
-                  },
-                  '& > svg': {
-                    transition: 'transform 0.2s ease',
-                    fontSize: 20,
-                  },
-                }}
-              >
-                <MoreHorizIcon />
-              </IconButton>
-              <Typography 
-                variant="caption" 
-                sx={{ 
-                  color: '#fff',
-                  fontSize: '0.6875rem', 
-                  mt: 0.75,
-                  fontWeight: 500,
-                  transition: 'color 0.2s',
-                  userSelect: 'none',
-                  lineHeight: '12px',
-                }}
-              >
-                More
-              </Typography>
-            </Box>
-          </Box>
-
-          {/* Bottom section with user avatar */}
-          <Box sx={{ mt: 'auto' }}>
-            <IconButton
-              onClick={handleUserMenuClick}
-              disableRipple
-              sx={{ 
-                width: 36,
-                height: 36,
-                borderRadius: 1.5,
-                backgroundColor: '#FF6B2C',
-                color: '#fff',
-                fontSize: '1.2rem',
-                fontWeight: 'bold',
-                '&:hover': {
-                  backgroundColor: '#E55A1F',
-                },
-              }}
-              >
-                {currentUser?.name?.charAt(0).toUpperCase()}
-            </IconButton>
-            <Popper
-              open={Boolean(userMenuAnchor)}
-              anchorEl={userMenuAnchor}
-              placement="right-start"
-              transition
-              sx={{ zIndex: (theme) => theme.zIndex.drawer + 3 }}
-            >
-              {({ TransitionProps }) => (
-                <Grow {...TransitionProps}>
-                  <Paper 
-                    sx={{ 
-                      width: 200,
-                      maxHeight: 'calc(100vh - 100px)',
-                      overflow: 'auto',
-                      mt: 0.5,
-                      ml: 0.5,
-                      backgroundColor: 'grey.800',
-                    }}
-                  >
-                    <ClickAwayListener onClickAway={handleUserMenuClose}>
-                      <MenuList>
-                        <Typography
-                          variant="subtitle2"
-                          sx={{
-                            px: 2,
-                            py: 1,
-                            fontWeight: 'bold',
-                            color: 'grey.400',
-                            fontSize: '0.75rem',
-                            textTransform: 'uppercase',
-                          }}
-                        >
-                          {currentUser?.name}
-                        </Typography>
-                        <MenuItem
-                          onClick={() => {
-                            handleUserMenuClose();
-                            handleLogout();
-                          }}
-                          sx={{ 
-                            color: 'grey.400',
-                            fontSize: '0.875rem',
-                            py: 0.75,
-                            '&:hover': {
-                              backgroundColor: 'grey.700',
-                            },
-                          }}
-                        >
-                          Sign out
-                        </MenuItem>
-                      </MenuList>
-                    </ClickAwayListener>
-                  </Paper>
-                </Grow>
-              )}
-            </Popper>
-          </Box>
-        </Drawer>
+        <HeroSidebar
+          currentUser={currentUser}
+          workspaces={workspaces}
+          currentWorkspace={currentWorkspace}
+          onCreateWorkspace={() => setIsCreateWorkspaceOpen(true)}
+          onWorkspaceSelect={handleWorkspaceSelect}
+          onLogout={handleLogout}
+        />
 
         {/* Rounded container for channel sidebar, content area, and settings */}
         <Box sx={{ 
@@ -1424,30 +1049,59 @@ function UserPage() {
                     key={user.id}
                     onClick={() => handleUserSelect(user)}
                     selected={selectedUser?.id === user.id}
-                        sx={{ 
-                          pl: 4,
-                          '&:hover': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                          },
-                          '&.Mui-selected': {
-                            backgroundColor: 'rgb(249, 237, 255)',
-                            '& .MuiListItemText-primary': {
-                              color: '#461147',
-                            },
-                            '&:hover': {
-                              backgroundColor: 'rgb(249, 237, 255)',
-                            },
-                          },
-                        }}
-                      >
-                        <ListItemIcon sx={{ minWidth: 36 }}>
+                    sx={{ 
+                      pl: 4,
+                      '&:hover': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      },
+                      '&.Mui-selected': {
+                        backgroundColor: 'rgb(249, 237, 255)',
+                        '& .MuiListItemText-primary': {
+                          color: '#461147',
+                        },
+                        '&:hover': {
+                          backgroundColor: 'rgb(249, 237, 255)',
+                        },
+                      },
+                    }}
+                  >
+                    <ListItemIcon sx={{ minWidth: 28, position: 'relative' }}>
                       <Avatar 
-                        sx={{ width: 24, height: 24, fontSize: '0.75rem' }}
+                        sx={{ 
+                          width: 24, 
+                          height: 24, 
+                          fontSize: '0.75rem',
+                          borderRadius: 1.5, // Makes it a rounded square
+                          bgcolor: '#44b700' // Green background
+                        }}
                       >
                         {user.name.charAt(0).toUpperCase()}
                       </Avatar>
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          bottom: -1,
+                          right: 2,
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          border: '2px solid rgba(249, 237, 255, 0.15)',
+                          backgroundColor: user.user_presence?.status === 'active' ? '#44b700' : '#ffa726',
+                          zIndex: 1
+                        }}
+                      />
                     </ListItemIcon>
-                    <ListItemText primary={user.name} />
+                    <ListItemText 
+                      primary={user.name}
+                      secondary={user.user_presence?.status_message}
+                      sx={{
+                        '& .MuiListItemText-secondary': {
+                          color: 'rgba(249, 237, 255, 0.7)',
+                          fontSize: '0.75rem',
+                          lineHeight: '1.2'
+                        }
+                      }}
+                    />
                   </ListItemButton>
                 ))}
               </List>
@@ -1486,49 +1140,49 @@ function UserPage() {
                     height: '100%',
                   }}>
                     {/* Header */}
-                    <Box sx={{ 
-                      p: 2, 
-                      borderBottom: 1, 
-                      borderColor: 'divider',
-                      backgroundColor: 'background.paper',
+            <Box sx={{ 
+              p: 2, 
+              borderBottom: 1, 
+              borderColor: 'divider',
+              backgroundColor: 'background.paper',
                       flexShrink: 0,
-                    }}>
-                      {selectedChannel ? (
-                        <>
-                          <Typography variant="h6"># {selectedChannel.name}</Typography>
-                          <Typography variant="body2" color="textSecondary">
-                            Welcome to the {selectedChannel.name} channel!
-                          </Typography>
-                        </>
-                      ) : (
-                        <>
-                          <Typography variant="h6">{selectedUser.name}</Typography>
-                          <Typography variant="body2" color="textSecondary">
-                            Direct message with {selectedUser.name}
-                          </Typography>
-                        </>
-                      )}
-                    </Box>
+            }}>
+              {selectedChannel ? (
+                <>
+                  <Typography variant="h6"># {selectedChannel.name}</Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Welcome to the {selectedChannel.name} channel!
+                  </Typography>
+                </>
+              ) : (
+                <>
+                  <Typography variant="h6">{selectedUser.name}</Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Direct message with {selectedUser.name}
+                  </Typography>
+                </>
+              )}
+            </Box>
 
                     {/* Messages Area */}
                     <Box sx={{ flexGrow: 1, minHeight: 0, overflow: 'hidden' }}>
-                      {selectedChannel ? (
-                        <Messaging 
-                          channelId={selectedChannel.id} 
-                          channelName={selectedChannel.name}
+              {selectedChannel ? (
+                <Messaging 
+                  channelId={selectedChannel.id} 
+                  channelName={selectedChannel.name}
                           workspaceId={currentWorkspace.id}
                           onThreadClick={handleThreadClick}
-                        />
-                      ) : (
-                        <DirectMessaging 
-                          recipientId={selectedUser.id}
-                          recipientName={selectedUser.name}
+                />
+              ) : (
+                <DirectMessaging 
+                  recipientId={selectedUser.id}
+                  recipientName={selectedUser.name}
                           workspaceId={currentWorkspace.id}
                           onThreadClick={handleThreadClick}
-                        />
-                      )}
-                    </Box>
-                  </Box>
+                />
+              )}
+            </Box>
+          </Box>
                 )
               )}
             </Box>
