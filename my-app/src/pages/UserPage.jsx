@@ -134,6 +134,19 @@ function UserPage() {
           console.log('Updated users:', updatedUsers);
           return updatedUsers;
         });
+
+        // Also update currentUser if the presence change is for them
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user && user.id === payload.new.user_id) {
+          setCurrentUser(prevUser => ({
+            ...prevUser,
+            user_presence: {
+              status: payload.new.status,
+              status_message: payload.new.status_message,
+              last_seen: payload.new.last_seen
+            }
+          }));
+        }
       })
       .subscribe();
 
@@ -145,7 +158,7 @@ function UserPage() {
       console.log('Updating presence for user:', user.id);
       const { data, error } = await supabase.rpc('update_user_presence', {
         user_id_param: user.id,
-        status_param: 'online'
+        status_param: 'active'
       });
       
       if (error) {
@@ -171,10 +184,10 @@ function UserPage() {
           status_param: 'away'
         });
       } else {
-        console.log('Tab visible, setting status to online');
+        console.log('Tab visible, setting status to active');
         supabase.rpc('update_user_presence', {
           user_id_param: user.id,
-          status_param: 'online'
+          status_param: 'active'
         });
       }
     };
@@ -188,10 +201,10 @@ function UserPage() {
       const handleUnmount = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          console.log('Component unmounting, setting status to offline');
+          console.log('Component unmounting, setting status to away');
           await supabase.rpc('update_user_presence', {
             user_id_param: user.id,
-            status_param: 'offline'
+            status_param: 'away'
           });
         }
       };

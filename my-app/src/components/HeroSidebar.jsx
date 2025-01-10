@@ -293,24 +293,39 @@ function HeroSidebar({
 
       {/* Bottom section with user avatar */}
       <Box sx={{ mt: 'auto' }}>
-        <IconButton
-          onClick={handleUserMenuClick}
-          disableRipple
-          sx={{ 
-            width: 36,
-            height: 36,
-            borderRadius: 1.5,
-            backgroundColor: '#FF6B2C',
-            color: '#fff',
-            fontSize: '1.2rem',
-            fontWeight: 'bold',
-            '&:hover': {
-              backgroundColor: '#E55A1F',
-            },
-          }}
-        >
-          {currentUser?.name?.charAt(0).toUpperCase()}
-        </IconButton>
+        <Box sx={{ position: 'relative' }}>
+          <IconButton
+            onClick={handleUserMenuClick}
+            disableRipple
+            sx={{ 
+              width: 36,
+              height: 36,
+              borderRadius: 1.5,
+              backgroundColor: '#FF6B2C',
+              color: '#fff',
+              fontSize: '1.2rem',
+              fontWeight: 'bold',
+              '&:hover': {
+                backgroundColor: '#E55A1F',
+              },
+            }}
+          >
+            {currentUser?.name?.charAt(0).toUpperCase()}
+          </IconButton>
+          <Box
+            sx={{
+              position: 'absolute',
+              bottom: -2,
+              right: -2,
+              width: 12,
+              height: 12,
+              borderRadius: '50%',
+              border: '2px solid rgba(249, 237, 255, 0.15)',
+              backgroundColor: currentUser?.user_presence?.status === 'active' ? '#44b700' : '#ffa726',
+              zIndex: 1
+            }}
+          />
+        </Box>
         <Popper
           open={Boolean(userMenuAnchor)}
           anchorEl={userMenuAnchor}
@@ -347,11 +362,22 @@ function HeroSidebar({
                     </Typography>
                     
                     <MenuItem
-                      onClick={() => {
-                        supabase.rpc('update_user_presence', {
-                          user_id_param: currentUser.id,
-                          status_param: currentUser?.user_presence?.status === 'active' ? 'away' : 'active'
+                      onClick={async () => {
+                        console.log('Current status:', currentUser?.user_presence?.status);
+                        const newStatus = currentUser?.user_presence?.status === 'active' ? 'away' : 'active';
+                        console.log('Setting status to:', newStatus);
+                        
+                        const { data, error } = await supabase.rpc('update_user_presence', {
+                          status_param: newStatus,
+                          user_id_param: currentUser.id
                         });
+                        
+                        if (error) {
+                          console.error('Error updating status:', error);
+                        } else {
+                          console.log('Status updated successfully:', data);
+                          handleUserMenuClose();
+                        }
                       }}
                       sx={{ 
                         color: 'grey.400',
@@ -362,18 +388,25 @@ function HeroSidebar({
                         },
                       }}
                     >
-                      {currentUser?.user_presence?.status === 'active' ? 'Set yourself as away' : 'Set yourself as active'}
+                      {currentUser?.user_presence?.status === 'away' ? 'Set yourself as active' : 'Set yourself as away'}
                     </MenuItem>
 
                     <MenuItem
-                      onClick={() => {
-                        const newStatus = prompt('Set your status message:', currentUser?.user_presence?.status_message || '');
-                        if (newStatus !== null) {
-                          supabase.rpc('update_user_presence', {
-                            user_id_param: currentUser.id,
-                            status_param: currentUser?.user_presence?.status || 'away',
-                            status_message_param: newStatus
+                      onClick={async () => {
+                        const newMessage = prompt('Set your status message:', currentUser?.user_presence?.status_message || '');
+                        if (newMessage !== null) {
+                          // For now, we can only update status, not the message
+                          const { data, error } = await supabase.rpc('update_user_presence', {
+                            status_param: currentUser?.user_presence?.status || 'active',
+                            user_id_param: currentUser.id
                           });
+                          
+                          if (error) {
+                            console.error('Error updating status:', error);
+                          } else {
+                            console.log('Status updated successfully:', data);
+                            handleUserMenuClose();
+                          }
                         }
                       }}
                       sx={{ 
