@@ -14,6 +14,7 @@ import AttachFileIcon from '@mui/icons-material/AttachFile';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 import DownloadIcon from '@mui/icons-material/Download';
 import CloseIcon from '@mui/icons-material/Close';
+import MessageReactions from './MessageReactions';
 
 export default function RepliesContent({ parentMessage }) {
   const [replies, setReplies] = useState([]);
@@ -437,6 +438,7 @@ export default function RepliesContent({ parentMessage }) {
               {parentMessage.attachments.map(attachment => renderAttachment(attachment))}
             </Box>
           )}
+          <MessageReactions messageId={parentMessage.id} />
         </Box>
       </Box>
 
@@ -459,14 +461,15 @@ export default function RepliesContent({ parentMessage }) {
                 key={reply.id}
                 sx={{
                   display: 'flex',
+                  alignItems: 'flex-start',
                   gap: 1,
                   mb: 2,
                 }}
               >
-                <Avatar sx={{ width: 32, height: 32, fontSize: '0.875rem' }}>
+                <Avatar sx={{ width: 24, height: 24, fontSize: '0.75rem' }}>
                   {reply.users?.name?.charAt(0).toUpperCase()}
                 </Avatar>
-                <Box>
+                <Box sx={{ flexGrow: 1 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                     <Typography variant="subtitle2">
                       {reply.users?.name}
@@ -484,6 +487,7 @@ export default function RepliesContent({ parentMessage }) {
                       {reply.attachments.map(attachment => renderAttachment(attachment))}
                     </Box>
                   )}
+                  <MessageReactions messageId={reply.id} />
                 </Box>
               </Box>
             ))}

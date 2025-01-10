@@ -15,6 +15,7 @@ import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import { supabase } from '../supabaseClient';
 import 'react-quill/dist/quill.snow.css';
 import MessageInput from './MessageInput';
+import MessageReactions from './MessageReactions';
 
 export default function DirectMessaging({ recipientId, recipientName, workspaceId, onThreadClick }) {
   const [messages, setMessages] = useState([]);
@@ -478,6 +479,7 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
               {msg.attachments.map(attachment => renderAttachment(attachment))}
             </Box>
           )}
+          <MessageReactions messageId={msg.id} />
         </Box>
         <Box 
           className="message-actions"

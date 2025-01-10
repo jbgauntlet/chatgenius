@@ -18,6 +18,7 @@ import 'react-quill/dist/quill.snow.css';
 import './Messaging.css';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import MessageInput from './MessageInput';
+import MessageReactions from './MessageReactions';
 
 export default function Messaging({ channelId, channelName, workspaceId, onThreadClick }) {
   const [messages, setMessages] = useState([]);
@@ -466,6 +467,7 @@ export default function Messaging({ channelId, channelName, workspaceId, onThrea
               ))}
             </Box>
           )}
+          <MessageReactions messageId={message.id} />
         </Box>
         <Box 
           className="message-actions"
