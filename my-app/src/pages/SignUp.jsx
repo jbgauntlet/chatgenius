@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Box,
-  Button,
-  FormControl,
-  FormLabel,
-  TextField,
-  Stack,
-  Typography,
   Container,
+  Box,
+  Typography,
+  TextField,
+  Button,
   Paper,
+  Stack,
+  Alert,
+  CircularProgress,
 } from '@mui/material';
 import { supabase } from '../supabaseClient';
 
@@ -21,6 +21,7 @@ export default function SignUp() {
     displayName: '',
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -33,6 +34,7 @@ export default function SignUp() {
   const handleSignUp = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
     
     try {
       // 1. Sign up the user
@@ -57,7 +59,8 @@ export default function SignUp() {
         navigate('/');
       }
     } catch (error) {
-      alert(error.message);
+      console.error('Error signing up:', error);
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -67,61 +70,65 @@ export default function SignUp() {
     <Container maxWidth="sm">
       <Paper elevation={3} sx={{ mt: 8, p: 4 }}>
         <Typography variant="h4" component="h1" align="center" gutterBottom>
-          Sign Up
+          Create Account
         </Typography>
+        <Typography variant="body1" color="text.secondary" align="center" paragraph>
+          Join workspaces and connect with others
+        </Typography>
+
         <form onSubmit={handleSignUp}>
           <Stack spacing={3}>
-            <FormControl fullWidth required>
-              <FormLabel>Display Name</FormLabel>
-              <TextField
-                type="text"
-                name="displayName"
-                value={formState.displayName}
-                onChange={handleChange}
-                placeholder="Enter your display name"
-                variant="outlined"
-                fullWidth
-              />
-            </FormControl>
-            <FormControl fullWidth required>
-              <FormLabel>Email</FormLabel>
-              <TextField
-                type="email"
-                name="email"
-                value={formState.email}
-                onChange={handleChange}
-                placeholder="Enter your email"
-                variant="outlined"
-                fullWidth
-              />
-            </FormControl>
-            <FormControl fullWidth required>
-              <FormLabel>Password</FormLabel>
-              <TextField
-                type="password"
-                name="password"
-                value={formState.password}
-                onChange={handleChange}
-                placeholder="Enter your password"
-                variant="outlined"
-                fullWidth
-              />
-            </FormControl>
+            {error && (
+              <Alert severity="error">
+                {error}
+              </Alert>
+            )}
+
+            <TextField
+              label="Display Name"
+              name="displayName"
+              value={formState.displayName}
+              onChange={handleChange}
+              required
+              fullWidth
+            />
+
+            <TextField
+              label="Email"
+              name="email"
+              type="email"
+              value={formState.email}
+              onChange={handleChange}
+              required
+              fullWidth
+            />
+
+            <TextField
+              label="Password"
+              name="password"
+              type="password"
+              value={formState.password}
+              onChange={handleChange}
+              required
+              fullWidth
+            />
+
             <Button
               type="submit"
               variant="contained"
-              color="primary"
               fullWidth
               disabled={loading}
+              sx={{ mt: 2 }}
             >
-              {loading ? 'Signing up...' : 'Sign Up'}
+              {loading ? <CircularProgress size={24} /> : 'Create Account'}
             </Button>
+
             <Button
               variant="text"
               onClick={() => navigate('/')}
               fullWidth
             >
-              Already have an account? Log in
+              Already have an account? Sign in
             </Button>
           </Stack>
         </form>
