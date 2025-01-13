@@ -16,7 +16,7 @@ import DOMPurify from 'dompurify';
 import { supabase } from '../supabaseClient';
 import 'react-quill/dist/quill.snow.css';
 import MessageInput from './MessageInput';
-import MessageReactions from './MessageReactions';
+import UserMessageReactions from './UserMessageReactions';
 import { getAvatarColor } from '../utils/colors';
 
 export default function DirectMessaging({ recipientId, recipientName, workspaceId, onThreadClick }) {
@@ -86,9 +86,8 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
             return [...prev, messageData];
           });
           scrollToBottom();
-        });
-
-      await channel.subscribe();
+        })
+        .subscribe();
     };
 
     fetchMessages();
@@ -115,10 +114,21 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
       .select(`
         *,
         sender:sender_id (
+          id,
           name
         ),
         recipient:recipient_id (
+          id,
           name
+        ),
+        user_message_reactions (
+          id,
+          emoji,
+          user_id,
+          users!user_message_reactions_user_id_fkey (
+            id,
+            name
+          )
         )
       `)
       .eq('workspace_id', workspaceId)
@@ -129,7 +139,33 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
     if (error) {
       console.error('Error fetching messages:', error);
     } else {
-      setMessages(data);
+      // Transform the reactions data into the format expected by UserMessageReactions
+      const messagesWithFormattedReactions = data.map(message => ({
+        ...message,
+        initialReactions: message.user_message_reactions.reduce((acc, reaction) => {
+          // Find existing emoji group or create new one
+          const existingGroup = acc.find(group => group.emoji === reaction.emoji);
+          if (existingGroup) {
+            existingGroup.users.push({
+              id: reaction.users.id,
+              name: reaction.users.name,
+              reaction_id: reaction.id
+            });
+            return acc;
+          }
+          // Create new emoji group
+          acc.push({
+            emoji: reaction.emoji,
+            users: [{
+              id: reaction.users.id,
+              name: reaction.users.name,
+              reaction_id: reaction.id
+            }]
+          });
+          return acc;
+        }, [])
+      }));
+      setMessages(messagesWithFormattedReactions);
     }
   }
 
@@ -498,7 +534,7 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
               {msg.attachments.map(attachment => renderAttachment(attachment))}
             </Box>
           )}
-          <MessageReactions messageId={msg.id} />
+          <UserMessageReactions messageId={msg.id} initialReactions={msg.initialReactions} />
         </Box>
         <Box 
           className="message-actions"

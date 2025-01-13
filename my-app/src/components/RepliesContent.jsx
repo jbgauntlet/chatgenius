@@ -16,6 +16,7 @@ import FileUploadIcon from '@mui/icons-material/FileUpload';
 import DownloadIcon from '@mui/icons-material/Download';
 import CloseIcon from '@mui/icons-material/Close';
 import MessageReactions from './MessageReactions';
+import UserMessageReactions from './UserMessageReactions';
 import { getAvatarColor } from '../utils/colors';
 
 export default function RepliesContent({ parentMessage }) {
@@ -36,6 +37,117 @@ export default function RepliesContent({ parentMessage }) {
     }
   }, [parentMessage]);
 
+  // Add subscription effect
+  useEffect(() => {
+    let channel;
+    
+    const setupSubscription = async () => {
+      if (!parentMessage) return;
+
+      const isDirectMessage = !parentMessage.channel_id;
+      const table = isDirectMessage ? 'user_messages' : 'messages';
+
+      // Subscribe to new replies
+      channel = supabase
+        .channel(`replies_${parentMessage.id}`)
+        .on('postgres_changes', { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: table,
+          filter: `parent_message_id=eq.${parentMessage.id}` 
+        }, async (payload) => {
+          // Fetch the complete reply data including sender info and reactions
+          const { data: replyData, error } = await supabase
+            .from(table)
+            .select(`
+              *,
+              ${isDirectMessage ? `
+                sender:sender_id (
+                  id,
+                  name
+                ),
+                recipient:recipient_id (
+                  id,
+                  name
+                ),
+                user_message_reactions (
+                  id,
+                  emoji,
+                  user_id,
+                  users!user_message_reactions_user_id_fkey (
+                    id,
+                    name
+                  )
+                )
+              ` : `
+                users!messages_sender_id_fkey (
+                  id,
+                  name
+                ),
+                message_reactions (
+                  id,
+                  emoji,
+                  user_id,
+                  users!message_reactions_user_id_fkey (
+                    id,
+                    name
+                  )
+                )
+              `}
+            `)
+            .eq('id', payload.new.id)
+            .single();
+
+          if (error) {
+            console.error('Error fetching reply details:', error);
+            return;
+          }
+
+          // Format the reactions data
+          const replyWithFormattedReactions = {
+            ...replyData,
+            initialReactions: (isDirectMessage ? replyData.user_message_reactions : replyData.message_reactions).reduce((acc, reaction) => {
+              const existingGroup = acc.find(group => group.emoji === reaction.emoji);
+              if (existingGroup) {
+                existingGroup.users.push({
+                  id: reaction.users.id,
+                  name: reaction.users.name,
+                  reaction_id: reaction.id
+                });
+                return acc;
+              }
+              acc.push({
+                emoji: reaction.emoji,
+                users: [{
+                  id: reaction.users.id,
+                  name: reaction.users.name,
+                  reaction_id: reaction.id
+                }]
+              });
+              return acc;
+            }, [])
+          };
+
+          // Add the new reply to the list
+          setReplies(prev => {
+            const replyExists = prev.some(reply => reply.id === replyWithFormattedReactions.id);
+            if (replyExists) return prev;
+            return [...prev, replyWithFormattedReactions];
+          });
+          scrollToBottom();
+        })
+        .subscribe();
+    };
+
+    setupSubscription();
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [parentMessage]);
+
   const fetchReplies = async () => {
     if (!parentMessage) return;
 
@@ -50,14 +162,35 @@ export default function RepliesContent({ parentMessage }) {
           *,
           ${isDirectMessage ? `
             sender:sender_id (
+              id,
               name
             ),
             recipient:recipient_id (
+              id,
               name
+            ),
+            user_message_reactions (
+              id,
+              emoji,
+              user_id,
+              users!user_message_reactions_user_id_fkey (
+                id,
+                name
+              )
             )
           ` : `
-            users:sender_id (
+            users!messages_sender_id_fkey (
+              id,
               name
+            ),
+            message_reactions (
+              id,
+              emoji,
+              user_id,
+              users!message_reactions_user_id_fkey (
+                id,
+                name
+              )
             )
           `}
         `)
@@ -65,7 +198,34 @@ export default function RepliesContent({ parentMessage }) {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setReplies(data);
+
+      // Transform the reactions data into the format expected by MessageReactions
+      const repliesWithFormattedReactions = data.map(reply => ({
+        ...reply,
+        initialReactions: (isDirectMessage ? reply.user_message_reactions : reply.message_reactions).reduce((acc, reaction) => {
+          // Find existing emoji group or create new one
+          const existingGroup = acc.find(group => group.emoji === reaction.emoji);
+          if (existingGroup) {
+            existingGroup.users.push({
+              id: reaction.users.id,
+              name: reaction.users.name,
+              reaction_id: reaction.id
+            });
+            return acc;
+          }
+          // Create new emoji group
+          acc.push({
+            emoji: reaction.emoji,
+            users: [{
+              id: reaction.users.id,
+              name: reaction.users.name,
+              reaction_id: reaction.id
+            }]
+          });
+          return acc;
+        }, [])
+      }));
+      setReplies(repliesWithFormattedReactions);
     } catch (error) {
       console.error('Error fetching replies:', error);
     } finally {
@@ -456,7 +616,11 @@ export default function RepliesContent({ parentMessage }) {
               {parentMessage.attachments.map(attachment => renderAttachment(attachment))}
             </Box>
           )}
-          <MessageReactions messageId={parentMessage.id} />
+          {parentMessage.channel_id ? (
+            <MessageReactions messageId={parentMessage.id} initialReactions={parentMessage.initialReactions} />
+          ) : (
+            <UserMessageReactions messageId={parentMessage.id} initialReactions={parentMessage.initialReactions} />
+          )}
         </Box>
       </Box>
 
@@ -523,7 +687,11 @@ export default function RepliesContent({ parentMessage }) {
                       {reply.attachments.map(attachment => renderAttachment(attachment))}
                     </Box>
                   )}
-                  <MessageReactions messageId={reply.id} />
+                  {parentMessage.channel_id ? (
+                    <MessageReactions messageId={reply.id} initialReactions={reply.initialReactions} />
+                  ) : (
+                    <UserMessageReactions messageId={reply.id} initialReactions={reply.initialReactions} />
+                  )}
                 </Box>
               </Box>
             ))}
@@ -589,6 +757,7 @@ export default function RepliesContent({ parentMessage }) {
           onFileSelect={handleFileSelect}
           uploading={sending}
           selectedFiles={selectedFiles}
+          padding={0}
         />
       </Box>
     </Box>

@@ -12,7 +12,7 @@ import AddReactionOutlinedIcon from '@mui/icons-material/AddReactionOutlined';
 import EmojiPicker from 'emoji-picker-react';
 import { supabase } from '../supabaseClient';
 
-export default function MessageReactions({ messageId, initialReactions = [] }) {
+export default function UserMessageReactions({ messageId, initialReactions = [] }) {
   const [reactionMap, setReactionMap] = useState(() => {
     // Initialize map from initial reactions
     const map = {};
@@ -41,11 +41,11 @@ export default function MessageReactions({ messageId, initialReactions = [] }) {
 
     // Subscribe to reaction changes
     const channel = supabase
-      .channel(`message-reactions-${messageId}`)
+      .channel(`user-message-reactions-${messageId}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
-        table: 'message_reactions',
+        table: 'user_message_reactions',
         filter: `message_id=eq.${messageId}`
       }, async (payload) => {
         console.log('subscription success - insert', payload);
@@ -85,7 +85,7 @@ export default function MessageReactions({ messageId, initialReactions = [] }) {
       .on('postgres_changes', {
         event: 'DELETE',
         schema: 'public',
-        table: 'message_reactions'
+        table: 'user_message_reactions'
       }, (payload) => {
         console.log('subscription success - delete', payload);
         if (mounted) {
@@ -122,7 +122,7 @@ export default function MessageReactions({ messageId, initialReactions = [] }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user found');
 
-      const { error } = await supabase.rpc('toggle_message_reaction', {
+      const { error } = await supabase.rpc('toggle_user_message_reaction', {
         message_id_param: messageId,
         user_id_param: user.id,
         emoji_param: emojiData.emoji
@@ -144,7 +144,7 @@ export default function MessageReactions({ messageId, initialReactions = [] }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user found');
 
-      const { error } = await supabase.rpc('toggle_message_reaction', {
+      const { error } = await supabase.rpc('toggle_user_message_reaction', {
         message_id_param: messageId,
         user_id_param: user.id,
         emoji_param: emoji

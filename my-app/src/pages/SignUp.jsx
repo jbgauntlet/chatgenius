@@ -79,6 +79,9 @@ export default function SignUp() {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formState.email,
         password: formState.password,
+        options: {
+          emailRedirectTo: `${import.meta.env.VITE_HOST}/`
+        }
       });
 
       if (authError) throw authError;

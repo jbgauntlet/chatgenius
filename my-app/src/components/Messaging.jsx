@@ -93,8 +93,18 @@ export default function Messaging({ channelId, channelName, workspaceId, onThrea
       .from("messages")
       .select(`
         *,
-        users:sender_id (
+        users!messages_sender_id_fkey (
+          id,
           name
+        ),
+        message_reactions (
+          id,
+          emoji,
+          user_id,
+          users!message_reactions_user_id_fkey (
+            id,
+            name
+          )
         )
       `)
       .eq("channel_id", channelId)
@@ -105,7 +115,33 @@ export default function Messaging({ channelId, channelName, workspaceId, onThrea
     if (error) {
       console.error('Error fetching messages:', error);
     } else {
-      setMessages(data);
+      // Transform the reactions data into the format expected by MessageReactions
+      const messagesWithFormattedReactions = data.map(message => ({
+        ...message,
+        initialReactions: message.message_reactions.reduce((acc, reaction) => {
+          // Find existing emoji group or create new one
+          const existingGroup = acc.find(group => group.emoji === reaction.emoji);
+          if (existingGroup) {
+            existingGroup.users.push({
+              id: reaction.users.id,
+              name: reaction.users.name,
+              reaction_id: reaction.id
+            });
+            return acc;
+          }
+          // Create new emoji group
+          acc.push({
+            emoji: reaction.emoji,
+            users: [{
+              id: reaction.users.id,
+              name: reaction.users.name,
+              reaction_id: reaction.id
+            }]
+          });
+          return acc;
+        }, [])
+      }));
+      setMessages(messagesWithFormattedReactions);
     }
   }
 
@@ -486,7 +522,7 @@ export default function Messaging({ channelId, channelName, workspaceId, onThrea
               ))}
             </Box>
           )}
-          <MessageReactions messageId={message.id} />
+          <MessageReactions messageId={message.id} initialReactions={message.initialReactions} />
         </Box>
         <Box 
           className="message-actions"

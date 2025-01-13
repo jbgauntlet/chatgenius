@@ -10,7 +10,7 @@ import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
 import DOMPurify from 'dompurify';
 
-export default function MessageInput({ channelId, channelName, onSendMessage, onFileSelect, uploading, selectedFiles = [] }) {
+export default function MessageInput({ channelId, channelName, onSendMessage, onFileSelect, uploading, selectedFiles = [], padding = 3 }) {
   const [message, setMessage] = useState('');
   const [showToolbar, setShowToolbar] = useState(false);
   const fileInputRef = useRef(null);
@@ -100,7 +100,7 @@ export default function MessageInput({ channelId, channelName, onSendMessage, on
   ];
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: padding }}>
       <Box sx={{ 
         p: 2.5, 
         borderRadius: '8px',
