@@ -6,12 +6,50 @@ import {
   Typography,
   TextField,
   Button,
-  Paper,
+  Link,
   Stack,
   Alert,
   CircularProgress,
+  styled,
 } from '@mui/material';
 import { supabase } from '../supabaseClient';
+
+// Custom styled components
+const StyledTextField = styled(TextField)({
+  '& .MuiOutlinedInput-root': {
+    fontSize: '18px',
+    color: 'rgb(29,28,29)',
+    borderRadius: '12px',
+    '& input::placeholder': {
+      fontSize: '18px',
+      color: 'rgba(29,28,29,0.7)',
+      fontWeight: 400,
+      opacity: 1,
+    },
+    '& fieldset': {
+      borderColor: 'rgba(94, 93, 96, 0.45)',
+      borderRadius: '12px',
+    },
+    '& .MuiOutlinedInput-input': {
+      padding: '9px 12px',
+    },
+    '&:hover fieldset': {
+      borderColor: 'rgba(94, 93, 96, 0.45)',
+    },
+    '&.Mui-focused fieldset': {
+      borderColor: 'rgba(94, 93, 96, 0.45)',
+    },
+  },
+});
+
+const StyledButton = styled(Button)({
+  fontSize: '18px',
+  padding: '9px 12px',
+  fontWeight: 700,
+  width: '100%',
+  height: '44px',
+  borderRadius: '12px',
+});
 
 export default function Authentication() {
   const navigate = useNavigate();
@@ -44,25 +82,75 @@ export default function Authentication() {
   };
 
   return (
-    <Container maxWidth="sm">
-      <Paper elevation={3} sx={{ mt: 8, p: 4 }}>
-        <Typography variant="h4" component="h1" align="center" gutterBottom>
-          Welcome Back
-        </Typography>
-        <Typography variant="body1" color="text.secondary" align="center" paragraph>
-          Sign in to join workspaces and connect with others
+    <Container maxWidth="sm" sx={{ 
+      height: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'flex-start',
+      alignItems: 'center',
+      pt: '8vh',
+      pb: 18,
+    }}>
+      <Box sx={{ 
+        width: '100%',
+        maxWidth: 400,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+      }}>
+        {/* Logo placeholder - replace src with actual logo */}
+        <Box 
+          component="img"
+          src="/src/assets/ChatGenius-logo-text-full.png"
+          alt="ChatGenius Logo"
+          sx={{ 
+            width: 'auto',
+            height: '34px',
+            mb: '4vh',
+          }}
+        />
+
+        <Typography 
+          variant="h1" 
+          align="center" 
+          gutterBottom
+          sx={{ 
+            fontSize: '48px',
+            fontWeight: 800,
+            color: 'rgb(29,28,29)',
+            mb: 1.5,
+            lineHeight: 1.2,
+          }}
+        >
+          Sign in to ChatGenius
         </Typography>
 
-        <form onSubmit={handleLogin}>
-          <Stack spacing={3}>
+        <Typography 
+          align="center" 
+          sx={{ 
+            fontSize: '18px',
+            fontWeight: 400,
+            color: 'rgb(29,28,29)',
+            mb: 4,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          We suggest using the{' '}
+          <Box component="span" sx={{ fontWeight: 600 }}>
+            email address you use at work.
+          </Box>
+        </Typography>
+
+        <form onSubmit={handleLogin} style={{ width: '100%' }}>
+          <Stack spacing={2.5} width="100%">
             {error && (
-              <Alert severity="error">
+              <Alert severity="error" sx={{ fontSize: '14px' }}>
                 {error}
               </Alert>
             )}
 
-            <TextField
-              label="Email"
+            <StyledTextField
+              placeholder="Email address"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -70,8 +158,8 @@ export default function Authentication() {
               fullWidth
             />
 
-            <TextField
-              label="Password"
+            <StyledTextField
+              placeholder="Password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -79,26 +167,49 @@ export default function Authentication() {
               fullWidth
             />
 
-            <Button
+            <StyledButton
               type="submit"
               variant="contained"
-              fullWidth
               disabled={loading}
-              sx={{ mt: 2 }}
             >
-              {loading ? <CircularProgress size={24} /> : 'Sign In'}
-            </Button>
-
-            <Button
-              variant="text"
-              onClick={() => navigate('/signup')}
-              fullWidth
-            >
-              Don't have an account? Sign up
-            </Button>
+              {loading ? <CircularProgress size={24} /> : 'Sign In With Email'}
+            </StyledButton>
           </Stack>
         </form>
-      </Paper>
+
+        <Box sx={{ 
+          mt: 3, 
+          textAlign: 'center',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '4px',
+        }}>
+          <Typography 
+            component="span" 
+            sx={{ 
+              color: 'rgba(29,28,29,0.7)',
+              fontSize: '14px',
+            }}
+          >
+            New to ChatGenius?
+          </Typography>
+          <Link
+            component="button"
+            onClick={() => navigate('/signup')}
+            sx={{ 
+              fontSize: '14px',
+              textDecoration: 'none',
+              fontWeight: 400,
+              '&:hover': {
+                textDecoration: 'underline',
+              },
+            }}
+          >
+            Create an account
+          </Link>
+        </Box>
+      </Box>
     </Container>
   );
 }

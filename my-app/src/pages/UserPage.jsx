@@ -55,6 +55,7 @@ import RepliesContent from '../components/RepliesContent';
 import SearchResults from '../components/SearchResults';
 import SearchBar from '../components/SearchBar';
 import HeroSidebar from '../components/HeroSidebar';
+import { getAvatarColor } from '../utils/colors';
 
 function UserPage() {
   const navigate = useNavigate();
@@ -1085,7 +1086,7 @@ function UserPage() {
                           height: 24, 
                           fontSize: '0.75rem',
                           borderRadius: 1.5, // Makes it a rounded square
-                          bgcolor: '#44b700' // Green background
+                          bgcolor: getAvatarColor(user.id) // Green background
                         }}
                       >
                         {user.name.charAt(0).toUpperCase()}
@@ -1450,7 +1451,7 @@ function UserPage() {
                       }
                     >
                       <ListItemAvatar>
-                        <Avatar sx={{ bgcolor: 'primary.main' }}>
+                        <Avatar sx={{ bgcolor: getAvatarColor(member.users.id) }}>
                           {member.users.name.charAt(0).toUpperCase()}
                         </Avatar>
                       </ListItemAvatar>

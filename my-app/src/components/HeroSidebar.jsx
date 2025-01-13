@@ -23,6 +23,7 @@ import NotificationsFilledIcon from '@mui/icons-material/Notifications';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import CheckIcon from '@mui/icons-material/Check';
 import { supabase } from '../supabaseClient';
+import { getAvatarColor } from '../utils/colors';
 
 function HeroSidebar({ 
   currentUser,
@@ -115,12 +116,13 @@ function HeroSidebar({
                 width: 36,
                 height: 36,
                 borderRadius: 1.5,
-                backgroundColor: 'primary.main',
+                backgroundColor: getAvatarColor(currentWorkspace?.id || ''),
                 color: 'grey.100',
                 fontSize: '1.2rem',
                 fontWeight: 'bold',
                 '&:hover': {
-                  backgroundColor: 'primary.dark',
+                  backgroundColor: getAvatarColor(currentWorkspace?.id || ''),
+                  opacity: 0.9,
                   '& > svg': {
                     transform: 'scale(1.15)',
                   },
@@ -301,12 +303,13 @@ function HeroSidebar({
               width: 36,
               height: 36,
               borderRadius: 1.5,
-              backgroundColor: '#FF6B2C',
+              backgroundColor: getAvatarColor(currentUser?.id || ''),
               color: '#fff',
               fontSize: '1.2rem',
               fontWeight: 'bold',
               '&:hover': {
-                backgroundColor: '#E55A1F',
+                backgroundColor: getAvatarColor(currentUser?.id || ''),
+                opacity: 0.9,
               },
             }}
           >

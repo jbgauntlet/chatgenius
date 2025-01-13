@@ -181,24 +181,36 @@ export default function JoinWorkspacesPage() {
         <Grid container spacing={3}>
           {filteredWorkspaces.map((workspace) => (
             <Grid item xs={12} sm={6} md={4} key={workspace.id}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
+              <Card sx={{
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                backgroundColor: 'rgba(249, 237, 255, 0.15)',
+                transition: 'all 0.2s ease-in-out',
+                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08)',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 6px 12px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.12)',
+                  backgroundColor: 'rgba(249, 237, 255, 0.2)',
+                }
+              }}>
+                <CardContent sx={{ flexGrow: 1 }}>
+                  <Typography variant="h6" gutterBottom sx={{ color: 'rgb(29,28,29)' }}>
                     {workspace.name}
                   </Typography>
                   {workspace.description && (
-                    <Typography variant="body2" color="text.secondary" paragraph>
+                    <Typography variant="body2" sx={{ color: 'rgba(29,28,29,0.7)' }} paragraph>
                       {workspace.description}
                     </Typography>
                   )}
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: 'rgba(29,28,29,0.7)' }}>
                     Created by {workspace.users.name}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: 'rgba(29,28,29,0.7)' }}>
                     {workspace.workspace_memberships.length} members
                   </Typography>
                 </CardContent>
-                <CardActions>
+                <CardActions sx={{ p: 2, pt: 0 }}>
                   <Button
                     fullWidth
                     variant="contained"
