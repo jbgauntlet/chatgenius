@@ -945,7 +945,7 @@ function UserPage() {
                 <Popper
                   open={Boolean(workspaceMenuAnchor)}
                   anchorEl={workspaceMenuAnchor}
-                  placement="right-start"
+                  placement="bottom-start"
                   transition
                   sx={{ zIndex: (theme) => theme.zIndex.drawer + 3 }}
                 >
@@ -953,38 +953,50 @@ function UserPage() {
                     <Grow {...TransitionProps}>
                       <Paper 
                         sx={{ 
-                          width: 200,
+                          width: 264,
                           maxHeight: 'calc(100vh - 100px)',
                           overflow: 'auto',
                           mt: 0.5,
-                          ml: 0.5,
-                          backgroundColor: 'grey.800',
+                          backgroundColor: '#F8F8F8',
+                          border: '1px solid rgba(70, 17, 71, 0.1)',
                         }}
                       >
                         <ClickAwayListener onClickAway={handleWorkspaceMenuClose}>
                           <MenuList>
-                            <Typography
-                              variant="subtitle2"
-                              sx={{
-                                px: 2,
-                                py: 1,
-                                fontWeight: 'bold',
-                                color: 'grey.400',
-                                fontSize: '0.75rem',
-                                textTransform: 'uppercase',
-                              }}
-                            >
-                              {currentWorkspace?.name}
-                            </Typography>
+                            <MenuItem sx={{ py: 1, px: 2 }}>
+                              <Avatar 
+                                sx={{ 
+                                  width: 24, 
+                                  height: 24, 
+                                  fontSize: '0.75rem',
+                                  borderRadius: 1.5,
+                                  bgcolor: getAvatarColor(currentWorkspace?.id),
+                                  mr: 1.5,
+                                }}
+                              >
+                                {currentWorkspace?.name?.charAt(0).toUpperCase()}
+                              </Avatar>
+                              <Typography
+                                variant="subtitle2"
+                                sx={{
+                                  fontWeight: 'bold',
+                                  color: '#1d1c1d',
+                                  fontSize: '0.875rem',
+                                }}
+                              >
+                                {currentWorkspace?.name}
+                              </Typography>
+                            </MenuItem>
                             {currentUserRole === 'owner' && (
                               <MenuItem
                                 onClick={handleWorkspaceSettingsOpen}
                                 sx={{ 
-                                  color: 'grey.400',
+                                  color: '#1d1c1d',
                                   fontSize: '0.875rem',
                                   py: 0.75,
+                                  px: 2,
                                   '&:hover': {
-                                    backgroundColor: 'grey.700',
+                                    backgroundColor: 'rgba(70, 17, 71, 0.05)',
                                   },
                                 }}
                               >
