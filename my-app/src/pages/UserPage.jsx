@@ -28,8 +28,9 @@ import {
   MenuList,
   ListItemAvatar,
 } from '@mui/material';
-import ExpandLess from '@mui/icons-material/ExpandLess';
-import ExpandMore from '@mui/icons-material/ExpandMore';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import ArrowRightIcon from '@mui/icons-material/ArrowRight';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import TagIcon from '@mui/icons-material/Tag';
 import AddIcon from '@mui/icons-material/Add';
 import CheckIcon from '@mui/icons-material/Check';
@@ -887,7 +888,7 @@ function UserPage() {
                 position: 'relative',
                 width: 280, 
                 boxSizing: 'border-box',
-                bgcolor: 'rgba(249, 237, 255, 0.15)',
+                bgcolor: 'rgba(255, 255, 255, 0.17)',
                 height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
@@ -914,16 +915,31 @@ function UserPage() {
               flexDirection: 'column',
             }}>
               <List>
-                <ListItemButton onClick={handleWorkspaceMenuClick}>
-              <ListItemText 
+                <ListItemButton 
+                  onClick={handleWorkspaceMenuClick}
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'flex-start',
+                  }}
+                >
+                  <ListItemText 
                     primary={currentWorkspace?.name || 'Select a workspace'} 
                     sx={{ 
                       ml: 2,
+                      flex: '0 1 auto',
                       '& .MuiListItemText-primary': {
                         fontSize: '16px',
-                        fontWeight: 500,
+                        fontWeight: 700,
                       },
                     }}
+                  />
+                  <KeyboardArrowDownIcon 
+                    sx={{ 
+                      ml: '2px',
+                      color: 'rgb(249, 237, 255)',
+                      fontSize: 20,
+                      flex: '0 0 auto',
+                    }} 
                   />
                 </ListItemButton>
                 <Popper
@@ -986,6 +1002,10 @@ function UserPage() {
                 <ListItemButton 
                   onClick={handleChannelsClick}
                   sx={{
+                    mx: '8px',
+                    mt: 2,
+                    borderRadius: '6px',
+                    py: 0.1,
                     '&:hover': {
                       backgroundColor: 'rgba(255, 255, 255, 0.1)',
                     },
@@ -994,11 +1014,15 @@ function UserPage() {
                     },
                   }}
                 >
-                  <Box sx={{ mr: 1.5 }}>
-              {channelsOpen ? <ExpandLess /> : <ExpandMore />}
+                  <Box sx={{ 
+                    mr: 1.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}>
+                    {channelsOpen ? <ArrowDropDownIcon /> : <ArrowRightIcon />}
                   </Box>
                   <ListItemText primary="Channels" />
-            </ListItemButton>
+                </ListItemButton>
             
             <Collapse in={channelsOpen} timeout="auto" unmountOnExit>
               <List component="div" disablePadding>
@@ -1007,26 +1031,29 @@ function UserPage() {
                     key={channel.id}
                     onClick={() => handleChannelSelect(channel)}
                     selected={selectedChannel?.id === channel.id}
-                        sx={{ 
-                          pl: 4,
-                          '&:hover': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                          },
-                          '&.Mui-selected': {
-                            backgroundColor: 'rgb(249, 237, 255)',
-                            '& .MuiListItemText-primary': {
-                              color: '#461147',
-                            },
-                            '& .MuiSvgIcon-root': {
-                              color: '#461147',
-                            },
-                            '&:hover': {
-                              backgroundColor: 'rgb(249, 237, 255)',
-                            },
-                          },
-                        }}
-                      >
-                        <ListItemIcon sx={{ color: 'rgb(249, 237, 255)', minWidth: 36 }}>
+                    sx={{ 
+                      pl: 4,
+                      py: 0.1,
+                      mx: '8px',
+                      borderRadius: '6px',
+                      '&:hover': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      },
+                      '&.Mui-selected': {
+                        backgroundColor: 'rgb(249, 237, 255)',
+                        '& .MuiListItemText-primary': {
+                          color: '#461147',
+                        },
+                        '& .MuiSvgIcon-root': {
+                          color: '#461147',
+                        },
+                        '&:hover': {
+                          backgroundColor: 'rgb(249, 237, 255)',
+                        },
+                      },
+                    }}
+                  >
+                    <ListItemIcon sx={{ color: 'rgb(249, 237, 255)', minWidth: 36 }}>
                       <TagIcon fontSize="small" />
                     </ListItemIcon>
                     <ListItemText primary={channel.name} />
@@ -1034,14 +1061,17 @@ function UserPage() {
                 ))}
                 <ListItemButton
                   onClick={() => setIsCreateChannelOpen(true)}
-                      sx={{ 
-                        pl: 4,
-                        '&:hover': {
-                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        },
-                      }}
-                    >
-                      <ListItemIcon sx={{ color: 'rgb(249, 237, 255)', minWidth: 36 }}>
+                  sx={{ 
+                    pl: 4,
+                    mx: '8px',
+                    borderRadius: '6px',
+                    py: 0.1,
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    },
+                  }}
+                >
+                  <ListItemIcon sx={{ color: 'rgb(249, 237, 255)', minWidth: 36 }}>
                     <AddIcon fontSize="small" />
                   </ListItemIcon>
                   <ListItemText primary="Add Channel" />
@@ -1049,11 +1079,25 @@ function UserPage() {
               </List>
             </Collapse>
 
-            <ListItemButton onClick={handleDMsClick}>
-                  <Box sx={{ mr: 1.5 }}>
-              {dmsOpen ? <ExpandLess /> : <ExpandMore />}
-                  </Box>
-                  <ListItemText primary="Direct Messages" />
+            <ListItemButton onClick={handleDMsClick}
+              sx={{
+                mx: '8px',
+                mt: 2,
+                borderRadius: '6px',
+                py: 0.1,
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                },
+              }}
+            >
+              <Box sx={{ 
+                mr: 1.5,
+                display: 'flex',
+                alignItems: 'center',
+              }}>
+                {dmsOpen ? <ArrowDropDownIcon /> : <ArrowRightIcon />}
+              </Box>
+              <ListItemText primary="Direct Messages" />
             </ListItemButton>
 
             <Collapse in={dmsOpen} timeout="auto" unmountOnExit>
@@ -1065,6 +1109,9 @@ function UserPage() {
                     selected={selectedUser?.id === user.id}
                     sx={{ 
                       pl: 4,
+                      py: 0.1,
+                      mx: '8px',
+                      borderRadius: '6px',
                       '&:hover': {
                         backgroundColor: 'rgba(255, 255, 255, 0.1)',
                       },
@@ -1072,6 +1119,9 @@ function UserPage() {
                         backgroundColor: 'rgb(249, 237, 255)',
                         '& .MuiListItemText-primary': {
                           color: '#461147',
+                        },
+                        '& .MuiListItemText-secondary': {
+                          color: 'rgba(70, 17, 71, 0.7)',
                         },
                         '&:hover': {
                           backgroundColor: 'rgb(249, 237, 255)',
@@ -1085,8 +1135,8 @@ function UserPage() {
                           width: 24, 
                           height: 24, 
                           fontSize: '0.75rem',
-                          borderRadius: 1.5, // Makes it a rounded square
-                          bgcolor: getAvatarColor(user.id) // Green background
+                          borderRadius: 1.5,
+                          bgcolor: getAvatarColor(user.id)
                         }}
                       >
                         {user.name.charAt(0).toUpperCase()}
@@ -1094,7 +1144,7 @@ function UserPage() {
                       <Box
                         sx={{
                           position: 'absolute',
-                          bottom: -1,
+                          bottom: 0,
                           right: 2,
                           width: 8,
                           height: 8,
@@ -1109,6 +1159,7 @@ function UserPage() {
                       primary={user.name}
                       secondary={user.user_presence?.status_message}
                       sx={{
+                        ml: 1,
                         '& .MuiListItemText-secondary': {
                           color: 'rgba(249, 237, 255, 0.7)',
                           fontSize: '0.75rem',

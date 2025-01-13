@@ -83,7 +83,7 @@ export default function SearchBar({
         sx={{
           width: '100%',
           height: '100%',
-          backgroundColor: isSearchFocused ? 'common.white' : 'rgba(255, 255, 255, 0.1)',
+          backgroundColor: isSearchFocused ? 'common.white' : 'rgba(255, 255, 255, 0.27)',
           borderRadius: 1,
           display: 'flex',
           alignItems: 'center',
