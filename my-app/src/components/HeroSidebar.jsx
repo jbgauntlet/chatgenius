@@ -22,8 +22,10 @@ import NotificationsIcon from '@mui/icons-material/NotificationsOutlined';
 import NotificationsFilledIcon from '@mui/icons-material/Notifications';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import CheckIcon from '@mui/icons-material/Check';
+import SearchIcon from '@mui/icons-material/Search';
 import { supabase } from '../supabaseClient';
 import { getAvatarColor } from '../utils/colors';
+import { useNavigate } from 'react-router-dom';
 
 function HeroSidebar({ 
   currentUser,
@@ -33,6 +35,7 @@ function HeroSidebar({
   onWorkspaceSelect,
   onLogout
 }) {
+  const navigate = useNavigate();
   const [selectedHeroButton, setSelectedHeroButton] = useState('home');
   const [workspaceSwitcherAnchor, setWorkspaceSwitcherAnchor] = useState(null);
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
@@ -193,7 +196,7 @@ function HeroSidebar({
                         <MenuItem
                           onClick={() => {
                             handleWorkspaceSwitcherClose();
-                            onCreateWorkspace();
+                            navigate('/join');
                           }}
                           sx={{ 
                             color: 'grey.400',
@@ -204,6 +207,25 @@ function HeroSidebar({
                             },
                             borderTop: 1,
                             borderColor: 'grey.700',
+                            display: 'flex',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <SearchIcon sx={{ mr: 1, fontSize: '1.25rem' }} />
+                          Join a workspace
+                        </MenuItem>
+                        <MenuItem
+                          onClick={() => {
+                            handleWorkspaceSwitcherClose();
+                            onCreateWorkspace();
+                          }}
+                          sx={{ 
+                            color: 'grey.400',
+                            fontSize: '0.875rem',
+                            py: 0.75,
+                            '&:hover': {
+                              backgroundColor: 'grey.700',
+                            },
                             display: 'flex',
                             alignItems: 'center',
                           }}

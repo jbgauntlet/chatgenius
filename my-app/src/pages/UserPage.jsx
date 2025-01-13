@@ -91,6 +91,7 @@ function UserPage() {
   const [workspaceMembers, setWorkspaceMembers] = useState([]);
   const [isInviteMembersOpen, setIsInviteMembersOpen] = useState(false);
   const [inviteLink, setInviteLink] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [activeInvites, setActiveInvites] = useState([]);
   const [sidePanelState, setSidePanelState] = useState({
     type: null, // 'help' | 'replies' | null
@@ -289,29 +290,46 @@ function UserPage() {
 
   const fetchUsers = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user || !currentWorkspace) return;
 
-    console.log('Fetching users with presence data');
+    console.log('Fetching users with presence data for workspace:', currentWorkspace.id);
     const { data, error } = await supabase
-      .from('users')
+      .from('workspace_memberships')
       .select(`
-        id, 
-        name,
-        user_presence!inner (
-          status,
-          status_message,
-          last_seen
+        users!inner (
+          id,
+          name,
+          user_presence!inner (
+            status,
+            status_message,
+            last_seen
+          )
         )
       `)
-      .neq('id', user.id); // Don't include the current user
+      .eq('workspace_id', currentWorkspace.id)
+      .neq('user_id', user.id); // Don't include the current user
 
     if (error) {
       console.error('Error fetching users:', error);
     } else {
-      console.log('Fetched users with presence:', data);
-      setUsers(data);
+      console.log('Fetched workspace users with presence:', data);
+      // Transform the data structure to match the existing format
+      const transformedUsers = data.map(item => ({
+        ...item.users,
+        user_presence: item.users.user_presence[0]
+      }));
+      setUsers(transformedUsers);
     }
   };
+
+  // Add effect to refetch users when workspace changes
+  useEffect(() => {
+    if (currentWorkspace) {
+      fetchUsers();
+    } else {
+      setUsers([]); // Clear users if no workspace is selected
+    }
+  }, [currentWorkspace]);
 
   const fetchWorkspaces = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -333,8 +351,16 @@ function UserPage() {
     } else {
       const workspaceList = data.map(item => item.workspace);
       setWorkspaces(workspaceList);
-      // If there's no current workspace but we have workspaces, set the first one
-      if (!currentWorkspace && workspaceList.length > 0) {
+      
+      // Check localStorage for saved workspace after fetching
+      const savedWorkspaceId = localStorage.getItem('currentWorkspaceId');
+      if (savedWorkspaceId) {
+        const savedWorkspace = workspaceList.find(w => w.id === savedWorkspaceId);
+        if (savedWorkspace) {
+          setCurrentWorkspace(savedWorkspace);
+        }
+      } else if (workspaceList.length > 0) {
+        // If no saved workspace but we have workspaces, set the first one
         setCurrentWorkspace(workspaceList[0]);
       }
     }
@@ -447,6 +473,7 @@ function UserPage() {
 
   const handleWorkspaceSelect = (workspace) => {
     setCurrentWorkspace(workspace);
+    localStorage.setItem('currentWorkspaceId', workspace.id);
     handleWorkspaceSwitcherClose();
   };
 
@@ -584,6 +611,31 @@ function UserPage() {
       fetchActiveInvites();
     } catch (error) {
       console.error('Error generating invite link:', error);
+    }
+  };
+
+  const handleGenerateInviteCode = async () => {
+    if (!currentWorkspace) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('workspace_invites')
+        .insert([{ 
+          workspace_id: currentWorkspace.id,
+          created_by: currentUser.id,
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setInviteCode(data.id);
+      
+      // Refresh the active invites list
+      fetchActiveInvites();
+    } catch (error) {
+      console.error('Error generating invite code:', error);
     }
   };
 
@@ -1526,45 +1578,95 @@ function UserPage() {
           <Stack spacing={3}>
             <Box>
               <Typography variant="subtitle2" sx={{ mb: 2 }}>
-                Generate an invite link to share with others
+                Generate an invite link or code to share with others
               </Typography>
               
-              {inviteLink ? (
-                <Box sx={{ 
-                  display: 'flex', 
-                  gap: 1,
-                  alignItems: 'center',
-                  bgcolor: 'grey.100',
-                  p: 2,
-                  borderRadius: 1,
-                }}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    value={inviteLink}
-                    InputProps={{
-                      readOnly: true,
-                    }}
-                  />
-                  <Button
-                    variant="contained"
-                    onClick={() => {
-                      navigator.clipboard.writeText(inviteLink);
-                      // TODO: Show a copy success message
-                    }}
-                  >
-                    Copy
-                  </Button>
+              <Stack spacing={2}>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  {!inviteLink && (
+                    <Button
+                      variant="contained"
+                      onClick={handleGenerateInviteLink}
+                      startIcon={<AddIcon />}
+                      sx={{ whiteSpace: 'nowrap' }}
+                    >
+                      Generate Invite Link
+                    </Button>
+                  )}
+                  {!inviteCode && (
+                    <Button
+                      variant="contained"
+                      onClick={handleGenerateInviteCode}
+                      startIcon={<AddIcon />}
+                      sx={{ whiteSpace: 'nowrap' }}
+                    >
+                      Generate Invite Code
+                    </Button>
+                  )}
                 </Box>
-              ) : (
-                <Button
-                  variant="contained"
-                  onClick={handleGenerateInviteLink}
-                  startIcon={<AddIcon />}
-                >
-                  Generate Invite Link
-                </Button>
-              )}
+
+                <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+                  Invites automatically expire after use
+                </Typography>
+
+                {inviteLink && (
+                  <Box sx={{ 
+                    display: 'flex', 
+                    gap: 1,
+                    alignItems: 'center',
+                    bgcolor: 'grey.100',
+                    p: 2,
+                    borderRadius: 1,
+                  }}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      value={inviteLink}
+                      InputProps={{
+                        readOnly: true,
+                      }}
+                    />
+                    <Button
+                      variant="contained"
+                      onClick={() => {
+                        navigator.clipboard.writeText(inviteLink);
+                        // TODO: Show a copy success message
+                      }}
+                    >
+                      Copy
+                    </Button>
+                  </Box>
+                )}
+
+                {inviteCode && (
+                  <Box sx={{ 
+                    display: 'flex', 
+                    gap: 1,
+                    alignItems: 'center',
+                    bgcolor: 'grey.100',
+                    p: 2,
+                    borderRadius: 1,
+                  }}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      value={inviteCode}
+                      InputProps={{
+                        readOnly: true,
+                      }}
+                    />
+                    <Button
+                      variant="contained"
+                      onClick={() => {
+                        navigator.clipboard.writeText(inviteCode);
+                        // TODO: Show a copy success message
+                      }}
+                    >
+                      Copy
+                    </Button>
+                  </Box>
+                )}
+              </Stack>
             </Box>
 
             <Divider />

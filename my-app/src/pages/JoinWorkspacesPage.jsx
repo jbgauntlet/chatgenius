@@ -15,24 +15,40 @@ import {
   InputAdornment,
   IconButton,
   Divider,
+  Tabs,
+  Tab,
+  Modal,
+  Paper,
+  Stack,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
+import KeyIcon from '@mui/icons-material/Key';
 import { supabase } from '../supabaseClient';
 import CreateWorkspaceModal from '../components/CreateWorkspaceModal';
 
 export default function JoinWorkspacesPage() {
   const navigate = useNavigate();
   const [workspaces, setWorkspaces] = useState([]);
+  const [myWorkspaces, setMyWorkspaces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [joiningWorkspace, setJoiningWorkspace] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isJoinPrivateModalOpen, setIsJoinPrivateModalOpen] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
+  const [currentTab, setCurrentTab] = useState(0);
 
   useEffect(() => {
     checkAuth();
     fetchPublicWorkspaces();
+    fetchMyWorkspaces();
   }, []);
 
   const checkAuth = async () => {
@@ -73,19 +89,58 @@ export default function JoinWorkspacesPage() {
     }
   };
 
-  const handleJoinWorkspace = async (workspaceId) => {
-    setJoiningWorkspace(workspaceId);
+  const fetchMyWorkspaces = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('workspace_memberships')
+        .select(`
+          workspace:workspaces (
+            id,
+            name,
+            description,
+            created_at,
+            owner_id,
+            users!workspaces_owner_id_fkey (
+              name
+            ),
+            workspace_memberships (
+              count
+            )
+          )
+        `)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setMyWorkspaces(data.map(item => item.workspace));
+    } catch (error) {
+      console.error('Error fetching my workspaces:', error);
+    }
+  };
+
+  const handleJoinWorkspace = async (workspace) => {
+    setJoiningWorkspace(workspace.id);
     setError(null);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user found');
 
+      if (currentTab === 1) {
+        // For "My Workspaces" tab - set workspace and navigate
+        localStorage.setItem('currentWorkspaceId', workspace.id);
+        navigate('/user');
+        return;
+      }
+
       // Check if user is already a member
       const { data: existingMembership, error: membershipCheckError } = await supabase
         .from('workspace_memberships')
         .select('id')
-        .eq('workspace_id', workspaceId)
+        .eq('workspace_id', workspace.id)
         .eq('user_id', user.id)
         .single();
 
@@ -94,6 +149,7 @@ export default function JoinWorkspacesPage() {
       }
 
       if (existingMembership) {
+        localStorage.setItem('currentWorkspaceId', workspace.id);
         navigate('/user');
         return;
       }
@@ -103,7 +159,7 @@ export default function JoinWorkspacesPage() {
         .from('workspace_memberships')
         .insert([
           {
-            workspace_id: workspaceId,
+            workspace_id: workspace.id,
             user_id: user.id,
             role: 'member'
           }
@@ -111,7 +167,8 @@ export default function JoinWorkspacesPage() {
 
       if (joinError) throw joinError;
 
-      // Navigate to the workspace
+      // Set workspace and navigate
+      localStorage.setItem('currentWorkspaceId', workspace.id);
       navigate('/user');
     } catch (error) {
       console.error('Error joining workspace:', error);
@@ -125,37 +182,106 @@ export default function JoinWorkspacesPage() {
     navigate('/user');
   };
 
-  const filteredWorkspaces = workspaces.filter(workspace =>
+  const handleTabChange = (event, newValue) => {
+    setCurrentTab(newValue);
+  };
+
+  const filteredWorkspaces = (currentTab === 0 ? workspaces : myWorkspaces).filter(workspace =>
     workspace.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (workspace.description && workspace.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const handleJoinWithCode = async () => {
+    setError(null);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No user found');
+
+      // First verify the invite code
+      const { data: invite, error: inviteError } = await supabase
+        .from('workspace_invites')
+        .select('workspace_id, active, used_at, expires_at')
+        .eq('id', joinCode)
+        .single();
+
+      if (inviteError) {
+        throw new Error('Invalid invite code');
+      }
+
+      if (!invite.active || invite.used_at || new Date(invite.expires_at) < new Date()) {
+        throw new Error('This invite code has expired or is no longer valid');
+      }
+
+      // Check if user is already a member
+      const { data: existingMembership, error: membershipCheckError } = await supabase
+        .from('workspace_memberships')
+        .select('id')
+        .eq('workspace_id', invite.workspace_id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (membershipCheckError && membershipCheckError.code !== 'PGRST116') {
+        throw membershipCheckError;
+      }
+
+      if (existingMembership) {
+        localStorage.setItem('currentWorkspaceId', invite.workspace_id);
+        navigate('/user');
+        return;
+      }
+
+      // Add user to workspace
+      const { error: joinError } = await supabase
+        .from('workspace_memberships')
+        .insert([
+          {
+            workspace_id: invite.workspace_id,
+            user_id: user.id,
+            role: 'member'
+          }
+        ]);
+
+      if (joinError) throw joinError;
+
+      // Mark invite as used
+      await supabase
+        .from('workspace_invites')
+        .update({ used_at: new Date().toISOString() })
+        .eq('id', joinCode);
+
+      // Set workspace and navigate
+      localStorage.setItem('currentWorkspaceId', invite.workspace_id);
+      navigate('/user');
+    } catch (error) {
+      console.error('Error joining workspace:', error);
+      setError(error.message || 'Failed to join workspace. Please try again.');
+    }
+  };
+
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box sx={{ mb: 4, textAlign: 'center' }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Join Public Workspaces
+      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h4" component="h1">
+          Workspaces
         </Typography>
-        <Typography variant="body1" color="text.secondary" paragraph>
-          Discover and join public workspaces to connect with others
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setIsCreateModalOpen(true)}
-          sx={{ mt: 2 }}
-        >
-          Create Workspace
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<KeyIcon />}
+            onClick={() => setIsJoinPrivateModalOpen(true)}
+          >
+            Join Workspace With Code
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setIsCreateModalOpen(true)}
+          >
+            Create Workspace
+          </Button>
+        </Box>
       </Box>
-
-      <Divider sx={{ my: 4 }} />
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
-      )}
 
       <Box sx={{ mb: 4 }}>
         <TextField
@@ -172,6 +298,19 @@ export default function JoinWorkspacesPage() {
           }}
         />
       </Box>
+
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs value={currentTab} onChange={handleTabChange}>
+          <Tab label="Public Workspaces" />
+          <Tab label="My Workspaces" />
+        </Tabs>
+      </Box>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -214,11 +353,13 @@ export default function JoinWorkspacesPage() {
                   <Button
                     fullWidth
                     variant="contained"
-                    onClick={() => handleJoinWorkspace(workspace.id)}
+                    onClick={() => handleJoinWorkspace(workspace)}
                     disabled={joiningWorkspace === workspace.id}
                   >
                     {joiningWorkspace === workspace.id ? (
                       <CircularProgress size={24} />
+                    ) : currentTab === 1 ? (
+                      'Open'
                     ) : (
                       'Join Workspace'
                     )}
@@ -244,6 +385,36 @@ export default function JoinWorkspacesPage() {
         onClose={() => setIsCreateModalOpen(false)}
         onWorkspaceCreated={handleWorkspaceCreated}
       />
+
+      {/* Join Private Workspace Modal */}
+      <Dialog
+        open={isJoinPrivateModalOpen}
+        onClose={() => setIsJoinPrivateModalOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Join Workspace</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            Enter the invite code to join a workspace.
+          </DialogContentText>
+          <TextField
+            autoFocus
+            fullWidth
+            label="Invite Code"
+            value={joinCode}
+            onChange={(e) => setJoinCode(e.target.value)}
+            error={Boolean(error)}
+            helperText={error}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsJoinPrivateModalOpen(false)}>Cancel</Button>
+          <Button onClick={handleJoinWithCode} variant="contained" disabled={!joinCode.trim()}>
+            Join Workspace
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 } 
