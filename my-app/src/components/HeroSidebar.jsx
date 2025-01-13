@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Drawer,
@@ -22,10 +23,11 @@ import NotificationsIcon from '@mui/icons-material/NotificationsOutlined';
 import NotificationsFilledIcon from '@mui/icons-material/Notifications';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import CheckIcon from '@mui/icons-material/Check';
+import SearchIcon from '@mui/icons-material/Search';
 import { supabase } from '../supabaseClient';
 import { getAvatarColor } from '../utils/colors';
 
-function HeroSidebar({ 
+export default function HeroSidebar({ 
   currentUser,
   workspaces,
   currentWorkspace,
@@ -33,6 +35,7 @@ function HeroSidebar({
   onWorkspaceSelect,
   onLogout
 }) {
+  const navigate = useNavigate();
   const [selectedHeroButton, setSelectedHeroButton] = useState('home');
   const [workspaceSwitcherAnchor, setWorkspaceSwitcherAnchor] = useState(null);
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
@@ -193,7 +196,7 @@ function HeroSidebar({
                         <MenuItem
                           onClick={() => {
                             handleWorkspaceSwitcherClose();
-                            onCreateWorkspace();
+                            navigate('/join');
                           }}
                           sx={{ 
                             color: 'grey.400',
@@ -208,8 +211,27 @@ function HeroSidebar({
                             alignItems: 'center',
                           }}
                         >
+                          <SearchIcon sx={{ mr: 1, fontSize: '1.25rem' }} />
+                          Join a workspace
+                        </MenuItem>
+                        <MenuItem
+                          onClick={() => {
+                            handleWorkspaceSwitcherClose();
+                            onCreateWorkspace();
+                          }}
+                          sx={{ 
+                            color: 'grey.400',
+                            fontSize: '0.875rem',
+                            py: 0.75,
+                            '&:hover': {
+                              backgroundColor: 'grey.700',
+                            },
+                            display: 'flex',
+                            alignItems: 'center',
+                          }}
+                        >
                           <AddIcon sx={{ mr: 1, fontSize: '1.25rem' }} />
-                          Create Workspace
+                          Create a workspace
                         </MenuItem>
                       </MenuList>
                     </ClickAwayListener>
@@ -451,6 +473,4 @@ function HeroSidebar({
       </Box>
     </Drawer>
   );
-}
-
-export default HeroSidebar; 
+} 
