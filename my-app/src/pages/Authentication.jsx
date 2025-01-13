@@ -101,7 +101,7 @@ export default function Authentication() {
         {/* Logo placeholder - replace src with actual logo */}
         <Box 
           component="img"
-          src="/src/assets/ChatGenius-logo-text-full.png"
+          src="/ChatGenius-logo-text-full.png"
           alt="ChatGenius Logo"
           sx={{ 
             width: 'auto',

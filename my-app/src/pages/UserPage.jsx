@@ -603,8 +603,8 @@ function UserPage() {
 
       if (error) throw error;
 
-      // Create the invite link using the invite ID
-      const inviteUrl = `${window.location.origin}/invite/${data.id}`;
+      // Create the invite link using the invite ID and environment variable
+      const inviteUrl = `${import.meta.env.VITE_HOST}/invite/${data.id}`;
       setInviteLink(inviteUrl);
       
       // Refresh the active invites list
