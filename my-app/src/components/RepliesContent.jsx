@@ -8,6 +8,7 @@ import {
   IconButton,
   Tooltip,
 } from '@mui/material';
+import DOMPurify from 'dompurify';
 import { supabase } from '../supabaseClient';
 import MessageInput from './MessageInput';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
@@ -15,6 +16,7 @@ import FileUploadIcon from '@mui/icons-material/FileUpload';
 import DownloadIcon from '@mui/icons-material/Download';
 import CloseIcon from '@mui/icons-material/Close';
 import MessageReactions from './MessageReactions';
+import { getAvatarColor } from '../utils/colors';
 
 export default function RepliesContent({ parentMessage }) {
   const [replies, setReplies] = useState([]);
@@ -417,21 +419,37 @@ export default function RepliesContent({ parentMessage }) {
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-            <Avatar sx={{ width: 24, height: 24, mr: 1, fontSize: '0.75rem' }}>
+            <Avatar 
+              sx={{ 
+                width: 24, 
+                height: 24, 
+                mr: 1, 
+                fontSize: '0.75rem',
+                borderRadius: 1,
+                bgcolor: getAvatarColor(parentMessage.sender_id),
+                fontWeight: 700
+              }}
+            >
               {parentMessage.users?.name?.charAt(0).toUpperCase()}
             </Avatar>
             <Typography variant="subtitle2">
               {parentMessage.users?.name}
             </Typography>
-            <Typography variant="caption" color="grey.600" sx={{ ml: 1 }}>
+            <Typography variant="caption" color="grey.600" sx={{ ml: 1, pt: '2px' }}>
               {new Date(parentMessage.created_at).toLocaleTimeString([], { 
-                hour: '2-digit', 
+                hour: 'numeric', 
                 minute: '2-digit' 
               })}
             </Typography>
           </Box>
           <Typography
-            dangerouslySetInnerHTML={{ __html: parentMessage.content }}
+            dangerouslySetInnerHTML={{ 
+              __html: DOMPurify.sanitize(parentMessage.content, {
+                ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 's', 'a', 'code', 'pre', 'ul', 'ol', 'li'],
+                ALLOWED_ATTR: ['href', 'target'],
+                ALLOW_DATA_ATTR: false,
+              }) 
+            }}
           />
           {parentMessage.attachments?.length > 0 && (
             <Box sx={{ mt: 1 }}>
@@ -466,20 +484,38 @@ export default function RepliesContent({ parentMessage }) {
                   mb: 2,
                 }}
               >
-                <Avatar sx={{ width: 24, height: 24, fontSize: '0.75rem' }}>
+                <Avatar 
+                  sx={{ 
+                    width: 24, 
+                    height: 24, 
+                    fontSize: '0.75rem',
+                    borderRadius: 1,
+                    bgcolor: getAvatarColor(reply.sender_id),
+                    fontWeight: 700
+                  }}
+                >
                   {reply.users?.name?.charAt(0).toUpperCase()}
                 </Avatar>
                 <Box sx={{ flexGrow: 1 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                    <Typography variant="subtitle2">
+                    <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       {reply.users?.name}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {new Date(reply.created_at).toLocaleTimeString()}
+                      <Typography variant="caption" color="text.secondary" sx={{ pt: '2px' }}>
+                        {new Date(reply.created_at).toLocaleTimeString([], { 
+                          hour: 'numeric', 
+                          minute: '2-digit' 
+                        })}
+                      </Typography>
                     </Typography>
                   </Box>
                   <Typography
-                    dangerouslySetInnerHTML={{ __html: reply.content }}
+                    dangerouslySetInnerHTML={{ 
+                      __html: DOMPurify.sanitize(reply.content, {
+                        ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 's', 'a', 'code', 'pre', 'ul', 'ol', 'li'],
+                        ALLOWED_ATTR: ['href', 'target'],
+                        ALLOW_DATA_ATTR: false,
+                      }) 
+                    }}
                     sx={{ wordBreak: 'break-word' }}
                   />
                   {reply.attachments?.length > 0 && (

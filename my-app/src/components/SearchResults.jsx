@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import TagIcon from '@mui/icons-material/Tag';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import { getAvatarColor } from '../utils/colors';
 
 export default function SearchResults({ 
   query, 
@@ -53,7 +54,14 @@ export default function SearchResults({
           {isDirectMessage ? (
             <>
               <Avatar 
-                sx={{ width: 20, height: 20, fontSize: '0.75rem' }}
+                sx={{ 
+                  width: 20, 
+                  height: 20, 
+                  fontSize: '0.75rem',
+                  borderRadius: 1,
+                  bgcolor: getAvatarColor(message.recipient_id),
+                  fontWeight: 700
+                }}
               >
                 {message.recipient?.name?.charAt(0).toUpperCase()}
               </Avatar>
@@ -80,16 +88,28 @@ export default function SearchResults({
 
         {/* Message content */}
         <Box sx={{ display: 'flex', gap: 2, width: '100%' }}>
-          <Avatar sx={{ width: 28, height: 28, fontSize: '0.875rem' }}>
+          <Avatar 
+            sx={{ 
+              width: 28, 
+              height: 28, 
+              fontSize: '0.875rem',
+              borderRadius: 1.2,
+              bgcolor: getAvatarColor(message.sender_id),
+              fontWeight: 700
+            }}
+          >
             {message.sender?.name?.charAt(0).toUpperCase()}
           </Avatar>
           <Box sx={{ flexGrow: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-              <Typography variant="subtitle2">
+              <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 {message.sender?.name}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {new Date(message.created_at).toLocaleString()}
+                <Typography variant="caption" color="text.secondary" sx={{ pt: '2px' }}>
+                  {new Date(message.created_at).toLocaleTimeString([], { 
+                    hour: 'numeric', 
+                    minute: '2-digit' 
+                  })}
+                </Typography>
               </Typography>
             </Box>
             <Typography

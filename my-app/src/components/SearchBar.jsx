@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import TagIcon from '@mui/icons-material/Tag';
+import { getAvatarColor } from '../utils/colors';
 
 export default function SearchBar({ 
   users, 
@@ -231,6 +232,9 @@ export default function SearchBar({
                       height: 24, 
                       fontSize: '0.75rem',
                       mr: 1,
+                      borderRadius: 1,
+                      bgcolor: getAvatarColor(user.id),
+                      fontWeight: 700
                     }}
                   >
                     {user.name.charAt(0).toUpperCase()}

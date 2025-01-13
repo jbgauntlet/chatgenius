@@ -19,6 +19,8 @@ import './Messaging.css';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import MessageInput from './MessageInput';
 import MessageReactions from './MessageReactions';
+import DOMPurify from 'dompurify';
+import { getAvatarColor } from '../utils/colors';
 
 export default function Messaging({ channelId, channelName, workspaceId, onThreadClick }) {
   const [messages, setMessages] = useState([]);
@@ -444,20 +446,37 @@ export default function Messaging({ channelId, channelName, workspaceId, onThrea
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-        <Avatar sx={{ width: 36, height: 36 }}>
+        <Avatar 
+          sx={{ 
+            width: 36, 
+            height: 36,
+            borderRadius: 1.5,
+            bgcolor: getAvatarColor(message.sender_id),
+            fontWeight: 700
+          }}
+        >
           {message.users.name.charAt(0).toUpperCase()}
         </Avatar>
         <Box sx={{ flexGrow: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-            <Typography variant="subtitle2">
+            <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               {message.users.name}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {new Date(message.created_at).toLocaleTimeString()}
+              <Typography variant="caption" color="text.secondary" sx={{ pt: '2px' }}>
+                {new Date(message.created_at).toLocaleTimeString([], { 
+                  hour: 'numeric', 
+                  minute: '2-digit' 
+                })}
+              </Typography>
             </Typography>
           </Box>
           <Typography
-            dangerouslySetInnerHTML={{ __html: message.content }}
+            dangerouslySetInnerHTML={{ 
+              __html: DOMPurify.sanitize(message.content, {
+                ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 's', 'a', 'code', 'pre', 'ul', 'ol', 'li'],
+                ALLOWED_ATTR: ['href', 'target'],
+                ALLOW_DATA_ATTR: false,
+              }) 
+            }}
             sx={{ wordBreak: 'break-word' }}
           />
           {message.attachments?.length > 0 && (

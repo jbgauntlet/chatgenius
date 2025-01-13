@@ -57,6 +57,7 @@ import SearchResults from '../components/SearchResults';
 import SearchBar from '../components/SearchBar';
 import HeroSidebar from '../components/HeroSidebar';
 import { getAvatarColor } from '../utils/colors';
+import CreateWorkspaceModal from '../components/CreateWorkspaceModal';
 
 function UserPage() {
   const navigate = useNavigate();
@@ -429,44 +430,9 @@ function UserPage() {
     }
   };
 
-  const handleCreateWorkspace = async () => {
-    if (!newWorkspaceName.trim()) return;
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    // Create the workspace
-    const { data: workspace, error: workspaceError } = await supabase
-      .from('workspaces')
-      .insert([{ 
-        name: newWorkspaceName.trim(),
-        owner_id: user.id,
-      }])
-      .select()
-      .single();
-
-    if (workspaceError) {
-      console.error('Error creating workspace:', workspaceError);
-      return;
-    }
-
-    // Add the creator as an owner in workspace_memberships
-    const { error: membershipError } = await supabase
-      .from('workspace_memberships')
-      .insert([{
-        workspace_id: workspace.id,
-        user_id: user.id,
-        role: 'owner'
-      }]);
-
-    if (membershipError) {
-      console.error('Error creating workspace membership:', membershipError);
-      return;
-    }
-
-    setNewWorkspaceName('');
+  const handleCreateWorkspace = async (workspace) => {
     setIsCreateWorkspaceOpen(false);
-    // Add the new workspace to the list and set it as current
+    // Update the workspaces list and set the new workspace as current
     setWorkspaces(prev => [...prev, workspace]);
     setCurrentWorkspace(workspace);
   };
@@ -929,7 +895,7 @@ function UserPage() {
                       flex: '0 1 auto',
                       '& .MuiListItemText-primary': {
                         fontSize: '16px',
-                        fontWeight: 700,
+                        fontWeight: 900,
                       },
                     }}
                   />
@@ -1147,8 +1113,9 @@ function UserPage() {
                           width: 24, 
                           height: 24, 
                           fontSize: '0.75rem',
-                          borderRadius: 1.5,
-                          bgcolor: getAvatarColor(user.id)
+                          borderRadius: 1,
+                          bgcolor: getAvatarColor(user.id),
+                          fontWeight: 700
                         }}
                       >
                         {user.name.charAt(0).toUpperCase()}
@@ -1162,7 +1129,7 @@ function UserPage() {
                           height: 8,
                           borderRadius: '50%',
                           border: '2px solid rgba(249, 237, 255, 0.15)',
-                          backgroundColor: user.user_presence?.status === 'active' ? '#44b700' : '#ffa726',
+                          backgroundColor: user.user_presence?.status === 'active' ? '#44b700' : '#B8B8B8',
                           zIndex: 1
                         }}
                       />
@@ -1334,51 +1301,11 @@ function UserPage() {
         </Paper>
       </Modal>
 
-      <Modal
+      <CreateWorkspaceModal
         open={isCreateWorkspaceOpen}
         onClose={() => setIsCreateWorkspaceOpen(false)}
-        aria-labelledby="create-workspace-modal"
-      >
-        <Paper
-          sx={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: 400,
-            p: 4,
-            outline: 'none',
-          }}
-        >
-          <Typography variant="h6" component="h2" gutterBottom>
-            Create New Workspace
-          </Typography>
-          <Stack spacing={3}>
-            <TextField
-              fullWidth
-              label="Workspace Name"
-              value={newWorkspaceName}
-              onChange={(e) => setNewWorkspaceName(e.target.value)}
-              placeholder="Enter workspace name"
-            />
-            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-              <Button
-                variant="outlined"
-                onClick={() => setIsCreateWorkspaceOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="contained"
-                onClick={handleCreateWorkspace}
-                disabled={!newWorkspaceName.trim()}
-              >
-                Create
-              </Button>
-            </Box>
-          </Stack>
-        </Paper>
-      </Modal>
+        onWorkspaceCreated={handleCreateWorkspace}
+      />
 
       {/* Workspace Settings Modal */}
       <Modal
@@ -1512,9 +1439,16 @@ function UserPage() {
                           </IconButton>
                         )
                       }
+                      sx={{
+                        py: 0,
+                      }}
                     >
                       <ListItemAvatar>
-                        <Avatar sx={{ bgcolor: getAvatarColor(member.users.id) }}>
+                        <Avatar sx={{ 
+                          bgcolor: getAvatarColor(member.users.id),
+                          borderRadius: 1.5,
+                          fontWeight: 700
+                        }}>
                           {member.users.name.charAt(0).toUpperCase()}
                         </Avatar>
                       </ListItemAvatar>

@@ -239,7 +239,7 @@ function HeroSidebar({
               cursor: 'pointer',
               '&:hover': {
                 '& .MuiIconButton-root': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.26)',
                 },
                 '& .MuiTypography-root': {
                   color: '#fff',
@@ -256,7 +256,7 @@ function HeroSidebar({
                 width: 36,
                 height: 36,
                 borderRadius: 1.5,
-                backgroundColor: selectedHeroButton === button.id ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                backgroundColor: selectedHeroButton === button.id ? 'rgba(255, 255, 255, 0.26)' : 'transparent',
                 color: '#fff',
                 '&:hover': {
                   backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -324,7 +324,7 @@ function HeroSidebar({
               height: 12,
               borderRadius: '50%',
               border: '2px solid rgba(249, 237, 255, 0.15)',
-              backgroundColor: currentUser?.user_presence?.status === 'active' ? '#44b700' : '#ffa726',
+              backgroundColor: currentUser?.user_presence?.status === 'active' ? '#44b700' : '#B8B8B8',
               zIndex: 1
             }}
           />
