@@ -235,12 +235,11 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
       }
 
       const messageData = {
-        sender_id: user.id,
         recipient_id: recipientId,
         workspace_id: workspaceId,
+        sender_id: user.id,
         content: message,
-        attachments: attachments.length > 0 ? attachments : null,
-        thread_count: 0  // Initialize thread count
+        attachments
       };
 
       const { data, error } = await supabase

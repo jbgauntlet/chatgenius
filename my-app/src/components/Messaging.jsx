@@ -21,6 +21,7 @@ import MessageInput from './MessageInput';
 import MessageReactions from './MessageReactions';
 import DOMPurify from 'dompurify';
 import { getAvatarColor } from '../utils/colors';
+import { generateMessageEmbedding } from '../utils/embeddings';
 
 export default function Messaging({ channelId, channelName, workspaceId, onThreadClick }) {
   const [messages, setMessages] = useState([]);
@@ -67,8 +68,14 @@ export default function Messaging({ channelId, channelName, workspaceId, onThrea
 
         // Check for duplicates before adding
         setMessages(prev => {
-          const messageExists = prev.some(msg => msg.id === messageData.id);
-          if (messageExists) return prev;
+          // More strict duplicate check
+          const isDuplicate = prev.some(msg => 
+            msg.id === messageData.id || 
+            (msg.content === messageData.content && 
+             msg.sender_id === messageData.sender_id && 
+             Math.abs(new Date(msg.created_at) - new Date(messageData.created_at)) < 1000)
+          );
+          if (isDuplicate) return prev;
           return [...prev, messageData];
         });
         scrollToBottom();
@@ -232,7 +239,15 @@ export default function Messaging({ channelId, channelName, workspaceId, onThrea
       if (error) {
         console.error('Error sending message:', error);
       } else {
-        setMessages(prev => [...prev, data]);
+        // Generate embeddings for the new message
+        await generateMessageEmbedding(
+          data.id,
+          data.content,
+          workspaceId,
+          user.id
+        );
+        
+        // Message will be added by the subscription handler
         setSelectedFiles([]);
         scrollToBottom();
       }

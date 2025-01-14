@@ -51,13 +51,85 @@ import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import ChatBubbleIcon from '@mui/icons-material/ChatBubbleOutline';
 import ChatBubbleFilledIcon from '@mui/icons-material/ChatBubble';
 import SidePanel from '../components/SidePanel';
-import HelpContent from '../components/HelpContent';
+import AiAssistantContent from '../components/AiAssistantContent';
 import RepliesContent from '../components/RepliesContent';
 import SearchResults from '../components/SearchResults';
 import SearchBar from '../components/SearchBar';
 import HeroSidebar from '../components/HeroSidebar';
 import { getAvatarColor } from '../utils/colors';
 import CreateWorkspaceModal from '../components/CreateWorkspaceModal';
+import { generateEmbedding } from '../utils/embeddings';
+
+async function queryAiAssistant(userQuery, workspaceId) {
+  if (!workspaceId) {
+    throw new Error('No workspace selected');
+  }
+
+  // Generate the query embedding
+  const queryEmbedding = await generateEmbedding(userQuery);
+
+  // Perform a similarity search on the vectors
+  const { data, error } = await supabase
+    .rpc('vector_search', {
+      query_vector: queryEmbedding,
+      top_k: 5,
+      workspace_id: workspaceId,
+    });
+
+  console.log("Vector search results:", {
+    data,
+    error,
+    workspaceId,
+    queryLength: queryEmbedding.length
+  });
+
+  if (error) {
+    console.error("Error retrieving vectors:", error);
+    throw new Error('Error searching messages');
+  }
+
+  // Extract relevant messages
+  const relevantMessages = data.map((item) => item.message_content);
+
+  // Combine context and query for RAG
+  const context = relevantMessages.join("\n");
+  console.log("Context being sent to OpenAI:", {
+    context,
+    relevantMessages,
+    userQuery
+  });
+  
+  const systemPrompt = "You are a helpful AI assistant in a chat application. Use the provided message history as context to answer the user's question. If the context doesn't help answer the question, just say so.";
+  
+  try {
+    // Send the final input to OpenAI for a response
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-3.5-turbo",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Context from previous messages:\n${context}\n\n Use this context before anything else. to solve the user question.User question: ${userQuery}` }
+        ],
+        max_tokens: 500,
+        temperature: 0.7,
+      }),
+    });
+
+    const result = await response.json();
+    if (!result.choices?.[0]?.message?.content) {
+      throw new Error('Invalid response from OpenAI');
+    }
+    return result.choices[0].message.content;
+  } catch (error) {
+    console.error("Error getting AI response:", error);
+    throw new Error('Error generating response');
+  }
+}
 
 function UserPage() {
   const navigate = useNavigate();
@@ -487,7 +559,7 @@ function UserPage() {
 
   const handleHelpClick = () => {
     setSidePanelState({
-      type: 'help',
+      type: 'assistant',
       isOpen: true,
       data: null
     });
@@ -1289,12 +1361,16 @@ function UserPage() {
               onClose={handleSidePanelClose}
               type={sidePanelState.type}
               title={
-                sidePanelState.type === 'help' ? 'Help' :
+                sidePanelState.type === 'assistant' ? 'AI Assistant' :
                 sidePanelState.type === 'replies' ? 'Thread' :
                 ''
               }
             >
-              {sidePanelState.type === 'help' && <HelpContent />}
+              {sidePanelState.type === 'assistant' && (
+                <AiAssistantContent 
+                  queryAiAssistant={(query) => queryAiAssistant(query, currentWorkspace?.id)} 
+                />
+              )}
               {sidePanelState.type === 'replies' && (
                 <RepliesContent parentMessage={sidePanelState.data} />
               )}
