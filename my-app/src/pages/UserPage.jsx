@@ -59,77 +59,8 @@ import HeroSidebar from '../components/HeroSidebar';
 import { getAvatarColor } from '../utils/colors';
 import CreateWorkspaceModal from '../components/CreateWorkspaceModal';
 import { generateEmbedding } from '../utils/embeddings';
-
-async function queryAiAssistant(userQuery, workspaceId) {
-  if (!workspaceId) {
-    throw new Error('No workspace selected');
-  }
-
-  // Generate the query embedding
-  const queryEmbedding = await generateEmbedding(userQuery);
-
-  // Perform a similarity search on the vectors
-  const { data, error } = await supabase
-    .rpc('vector_search', {
-      query_vector: queryEmbedding,
-      top_k: 5,
-      workspace_id: workspaceId,
-    });
-
-  console.log("Vector search results:", {
-    data,
-    error,
-    workspaceId,
-    queryLength: queryEmbedding.length
-  });
-
-  if (error) {
-    console.error("Error retrieving vectors:", error);
-    throw new Error('Error searching messages');
-  }
-
-  // Extract relevant messages
-  const relevantMessages = data.map((item) => item.message_content);
-
-  // Combine context and query for RAG
-  const context = relevantMessages.join("\n");
-  console.log("Context being sent to OpenAI:", {
-    context,
-    relevantMessages,
-    userQuery
-  });
-  
-  const systemPrompt = "You are a helpful AI assistant in a chat application. Use the provided message history as context to answer the user's question. If the context doesn't help answer the question, just say so.";
-  
-  try {
-    // Send the final input to OpenAI for a response
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-3.5-turbo",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Context from previous messages:\n${context}\n\n Use this context before anything else. to solve the user question.User question: ${userQuery}` }
-        ],
-        max_tokens: 500,
-        temperature: 0.7,
-      }),
-    });
-
-    const result = await response.json();
-    if (!result.choices?.[0]?.message?.content) {
-      throw new Error('Invalid response from OpenAI');
-    }
-    return result.choices[0].message.content;
-  } catch (error) {
-    console.error("Error getting AI response:", error);
-    throw new Error('Error generating response');
-  }
-}
+import SmartToyIcon from '@mui/icons-material/SmartToy';
+import UserBotContent from '../components/UserBotContent';
 
 function UserPage() {
   const navigate = useNavigate();
@@ -166,7 +97,7 @@ function UserPage() {
   const [inviteCode, setInviteCode] = useState('');
   const [activeInvites, setActiveInvites] = useState([]);
   const [sidePanelState, setSidePanelState] = useState({
-    type: null, // 'help' | 'replies' | null
+    type: null, // 'help' | 'replies' | 'assistant' | 'user-bot' | null
     isOpen: false,
     data: null
   });
@@ -174,6 +105,83 @@ function UserPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [currentSearchQuery, setCurrentSearchQuery] = useState('');
+
+  async function queryAiAssistant(userQuery, workspaceId) {
+    if (!workspaceId) {
+      throw new Error('No workspace selected');
+    }
+
+    // Use currentUser state instead of making an auth call
+    if (!currentUser) {
+      throw new Error('No user found');
+    }
+
+    // Generate the query embedding
+    const queryEmbedding = await generateEmbedding(userQuery);
+
+    // Perform a similarity search on the vectors
+    const { data, error } = await supabase
+      .rpc('vector_search', {
+        query_vector: queryEmbedding,
+        top_k: 5,
+        workspace_id: workspaceId,
+        user_id: currentUser.id
+      });
+
+    console.log("Vector search results:", {
+      data,
+      error,
+      workspaceId,
+      queryLength: queryEmbedding.length
+    });
+
+    if (error) {
+      console.error("Error retrieving vectors:", error);
+      throw new Error('Error searching messages');
+    }
+
+    // Extract relevant messages
+    const relevantMessages = data.map((item) => item.content);
+
+    // Combine context and query for RAG
+    const context = relevantMessages.join("\n");
+    console.log("Context being sent to OpenAI:", {
+      context,
+      relevantMessages,
+      userQuery
+    });
+    
+    const systemPrompt = "You are a helpful AI assistant in a chat application. Use the provided message history as context to answer the user's question. If the context doesn't help answer the question, just say so.";
+    
+    try {
+      // Send the final input to OpenAI for a response
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `Context from previous messages:\n${context}\n\n Use this context before anything else to solve the user question. Do not mention that you are using context in your response. User question: ${userQuery}` }
+          ],
+          max_tokens: 500,
+          temperature: 0.7,
+        }),
+      });
+
+      const result = await response.json();
+      if (!result.choices?.[0]?.message?.content) {
+        throw new Error('Invalid response from OpenAI');
+      }
+      return result.choices[0].message.content;
+    } catch (error) {
+      console.error("Error getting AI response:", error);
+      throw new Error('Error generating response');
+    }
+  }
 
   useEffect(() => {
     fetchUserData();
@@ -497,11 +505,27 @@ function UserPage() {
   const handleUserSelect = (user) => {
     setSelectedUser(user);
     setSelectedChannel(null); // Deselect channel when selecting a DM
+    // Only close side panel if it's not the AI assistant
+    if (sidePanelState.type !== 'assistant') {
+      setSidePanelState({
+        type: null,
+        isOpen: false,
+        data: null
+      });
+    }
   };
 
   const handleChannelSelect = (channel) => {
     setSelectedChannel(channel);
     setSelectedUser(null); // Deselect DM when selecting a channel
+    // Only close side panel if it's not the AI assistant
+    if (sidePanelState.type !== 'assistant') {
+      setSidePanelState({
+        type: null,
+        isOpen: false,
+        data: null
+      });
+    }
   };
 
   const handleCreateChannel = async () => {
@@ -871,6 +895,14 @@ function UserPage() {
 
     // Clear search results
     setShowSearchResults(false);
+  };
+
+  const handleUserBotClick = (user) => {
+    setSidePanelState({
+      type: 'user-bot',
+      isOpen: true,
+      data: user
+    });
   };
 
   return (
@@ -1323,12 +1355,27 @@ function UserPage() {
                   </Typography>
                 </>
               ) : (
-                <>
-                  <Typography variant="h6">{selectedUser.name}</Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Direct message with {selectedUser.name}
-                  </Typography>
-                </>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box>
+                    <Typography variant="h6">{selectedUser.name}</Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      Direct message with {selectedUser.name}
+                    </Typography>
+                  </Box>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleUserBotClick(selectedUser)}
+                    sx={{
+                      color: 'grey.600',
+                      '&:hover': {
+                        color: 'primary.main',
+                        bgcolor: 'action.hover',
+                      },
+                    }}
+                  >
+                    <SmartToyIcon />
+                  </IconButton>
+                </Box>
               )}
             </Box>
 
@@ -1338,15 +1385,17 @@ function UserPage() {
                 <Messaging 
                   channelId={selectedChannel.id} 
                   channelName={selectedChannel.name}
-                          workspaceId={currentWorkspace.id}
-                          onThreadClick={handleThreadClick}
+                  workspaceId={currentWorkspace.id}
+                  workspaceName={currentWorkspace.name}
+                  onThreadClick={handleThreadClick}
                 />
               ) : (
                 <DirectMessaging 
                   recipientId={selectedUser.id}
                   recipientName={selectedUser.name}
-                          workspaceId={currentWorkspace.id}
-                          onThreadClick={handleThreadClick}
+                  workspaceId={currentWorkspace.id}
+                  workspaceName={currentWorkspace.name}
+                  onThreadClick={handleThreadClick}
                 />
               )}
             </Box>
@@ -1363,6 +1412,7 @@ function UserPage() {
               title={
                 sidePanelState.type === 'assistant' ? 'AI Assistant' :
                 sidePanelState.type === 'replies' ? 'Thread' :
+                sidePanelState.type === 'user-bot' ? `${sidePanelState.data?.name}-bot` :
                 ''
               }
             >
@@ -1372,7 +1422,18 @@ function UserPage() {
                 />
               )}
               {sidePanelState.type === 'replies' && (
-                <RepliesContent parentMessage={sidePanelState.data} />
+                <RepliesContent 
+                  parentMessage={sidePanelState.data}
+                  workspaceName={currentWorkspace.name}
+                  channelName={sidePanelState.data.channel?.name || selectedChannel?.name}
+                />
+              )}
+              {sidePanelState.type === 'user-bot' && (
+                <UserBotContent 
+                  user={sidePanelState.data}
+                  currentUser={currentUser}
+                  workspaceId={currentWorkspace.id}
+                />
               )}
             </SidePanel>
           </Box>

@@ -23,7 +23,7 @@ import DOMPurify from 'dompurify';
 import { getAvatarColor } from '../utils/colors';
 import { generateMessageEmbedding } from '../utils/embeddings';
 
-export default function Messaging({ channelId, channelName, workspaceId, onThreadClick }) {
+export default function Messaging({ channelId, channelName, workspaceId, workspaceName, onThreadClick }) {
   const [messages, setMessages] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -240,12 +240,17 @@ export default function Messaging({ channelId, channelName, workspaceId, onThrea
         console.error('Error sending message:', error);
       } else {
         // Generate embeddings for the new message
-        await generateMessageEmbedding(
-          data.id,
-          data.content,
-          workspaceId,
-          user.id
-        );
+        await generateMessageEmbedding({
+          messageId: data.id,
+          content: data.content,
+          workspaceId: data.workspace_id,
+          senderId: data.sender_id,
+          senderName: data.users.name,
+          channelName,
+          workspaceName,
+          timestamp: data.created_at,
+          parentMessageContent: null // This is a new message, not a reply
+        });
         
         // Message will be added by the subscription handler
         setSelectedFiles([]);

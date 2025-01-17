@@ -18,8 +18,9 @@ import CloseIcon from '@mui/icons-material/Close';
 import MessageReactions from './MessageReactions';
 import UserMessageReactions from './UserMessageReactions';
 import { getAvatarColor } from '../utils/colors';
+import { generateMessageEmbedding } from '../utils/embeddings';
 
-export default function RepliesContent({ parentMessage }) {
+export default function RepliesContent({ parentMessage, workspaceName, channelName }) {
   const [replies, setReplies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -290,6 +291,21 @@ export default function RepliesContent({ parentMessage }) {
       const isDirectMessage = !parentMessage.channel_id;
       const table = isDirectMessage ? 'user_messages' : 'messages';
 
+      // Determine recipient_id for DMs
+      let recipientId = null;
+      if (isDirectMessage) {
+        recipientId = parentMessage.sender_id === user.id ? 
+          parentMessage.recipient_id : 
+          parentMessage.sender_id;
+      }
+
+      console.log("Parent message:", {
+        parentMessage,
+        isDirectMessage,
+        currentUserId: user.id,
+        calculatedRecipientId: recipientId
+      });
+
       // Prepare message data
       const messageData = {
         content: message,
@@ -298,11 +314,13 @@ export default function RepliesContent({ parentMessage }) {
         workspace_id: parentMessage.workspace_id,
         attachments: attachments.length > 0 ? attachments : null,
         ...(isDirectMessage ? {
-          recipient_id: parentMessage.sender_id === user.id ? parentMessage.recipient_id : parentMessage.sender_id
+          recipient_id: recipientId
         } : {
           channel_id: parentMessage.channel_id
         })
       };
+
+      console.log("Message data being sent:", messageData);
 
       // Insert the reply
       const { data, error } = await supabase
@@ -312,13 +330,16 @@ export default function RepliesContent({ parentMessage }) {
           *,
           ${isDirectMessage ? `
             sender:sender_id (
+              id,
               name
             ),
             recipient:recipient_id (
+              id,
               name
             )
           ` : `
             users:sender_id (
+              id,
               name
             )
           `}
@@ -326,6 +347,38 @@ export default function RepliesContent({ parentMessage }) {
         .single();
 
       if (error) throw error;
+
+      // Log recipient data for verification
+      console.log("Reply data for embedding:", {
+        isDirectMessage,
+        recipientId: data.recipient_id,
+        recipientName: isDirectMessage ? data.recipient?.name : null,
+        senderId: data.sender_id,
+        senderName: isDirectMessage ? data.sender?.name : data.users?.name,
+        parentMessage: {
+          sender_id: parentMessage.sender_id,
+          recipient_id: parentMessage.recipient_id,
+          channel_id: parentMessage.channel_id,
+          channel_name: parentMessage.channel_name,
+          channel: parentMessage.channel
+        }
+      });
+
+      console.log(isDirectMessage + "pig");
+      // Generate embedding for the reply
+      await generateMessageEmbedding({
+        messageId: data.id,
+        content: data.content,
+        workspaceId: data.workspace_id,
+        senderId: data.sender_id,
+        senderName: isDirectMessage ? data.sender.name : data.users.name,
+        channelName: isDirectMessage ? null : channelName,
+        workspaceName: workspaceName,
+        timestamp: data.created_at,
+        parentMessageContent: parentMessage.content,
+        recipientId: isDirectMessage ? data.recipient_id : null,
+        recipientName: isDirectMessage ? data.recipient.name : null
+      });
 
       // Update thread count on parent message
       const { error: updateError } = await supabase
@@ -335,11 +388,10 @@ export default function RepliesContent({ parentMessage }) {
 
       if (updateError) throw updateError;
 
-      setReplies(prev => [...prev, data]);
+      // Remove immediate state update - let subscription handle it
+      // setReplies(prev => [...prev, data]);
       setSelectedFiles([]);
       setUploadProgress({});
-      // Only scroll to bottom after sending a message
-      scrollToBottom();
     } catch (error) {
       console.error('Error sending reply:', error);
     } finally {
