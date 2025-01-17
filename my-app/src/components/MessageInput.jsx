@@ -14,6 +14,8 @@ import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
 import DOMPurify from 'dompurify';
 import MessagePromptMenu from './MessagePromptMenu';
 import { typeText } from '../utils/textAnimation';
+import MicIcon from '@mui/icons-material/Mic';
+import StopIcon from '@mui/icons-material/Stop';
 
 export default function MessageInput({ channelId, channelName, onSendMessage, onFileSelect, uploading, selectedFiles = [], padding = 3 }) {
   const [message, setMessage] = useState('');
@@ -21,8 +23,12 @@ export default function MessageInput({ channelId, channelName, onSendMessage, on
   const [promptMenuAnchor, setPromptMenuAnchor] = useState(null);
   const [isGrammarChecking, setIsGrammarChecking] = useState(false);
   const [isEnhancing, setIsEnhancing] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState(null);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const fileInputRef = useRef(null);
   const editorRef = useRef(null);
+  const audioChunks = useRef([]);
 
   useEffect(() => {
     const adjustHeight = () => {
@@ -214,6 +220,71 @@ export default function MessageInput({ channelId, channelName, onSendMessage, on
     }
   };
 
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          audioChunks.current.push(e.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
+        audioChunks.current = [];
+        await transcribeAudio(audioBlob);
+        
+        // Stop all tracks to release the microphone
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      setMediaRecorder(recorder);
+      recorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error('Error starting recording:', error);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const transcribeAudio = async (audioBlob) => {
+    setIsTranscribing(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', audioBlob, 'audio.webm');
+      formData.append('model', 'whisper-1');
+
+      const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
+        },
+        body: formData
+      });
+
+      const result = await response.json();
+      if (result.text) {
+        if (editorRef.current) {
+          editorRef.current.textContent = '';
+          await typeText(result.text, editorRef.current, 30, adjustHeight);
+          setMessage(result.text);
+        }
+      }
+    } catch (error) {
+      console.error('Error transcribing audio:', error);
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
   return (
     <Box sx={{ p: padding }}>
       <Box sx={{ 
@@ -326,6 +397,37 @@ export default function MessageInput({ channelId, channelName, onSendMessage, on
                   <CircularProgress size={20} />
                 ) : (
                   <AutoFixHighIcon />
+                )}
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={isRecording ? "Stop Recording" : "Start Recording"}>
+              <IconButton
+                onClick={isRecording ? stopRecording : startRecording}
+                disabled={isTranscribing}
+                size="small"
+                sx={{
+                  ...buttonStyles,
+                  color: isRecording ? 'error.main' : buttonStyles.color,
+                  animation: isRecording ? 'pulse 1.5s infinite' : 'none',
+                  '@keyframes pulse': {
+                    '0%': {
+                      transform: 'scale(1)',
+                    },
+                    '50%': {
+                      transform: 'scale(1.1)',
+                    },
+                    '100%': {
+                      transform: 'scale(1)',
+                    },
+                  },
+                }}
+              >
+                {isTranscribing ? (
+                  <CircularProgress size={20} />
+                ) : isRecording ? (
+                  <StopIcon />
+                ) : (
+                  <MicIcon />
                 )}
               </IconButton>
             </Tooltip>

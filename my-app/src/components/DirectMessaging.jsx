@@ -259,9 +259,21 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
       if (error) {
         console.error('Error sending message:', error);
       } else {
-        setMessages(prev => [...prev, data]);
+        // Generate embeddings for the new message
+        await generateMessageEmbedding({
+          messageId: data.id,
+          content: data.content,
+          workspaceId: data.workspace_id,
+          senderId: data.sender_id,
+          senderName: data.sender.name,
+          recipientId: data.recipient_id,
+          recipientName: data.recipient.name,
+          timestamp: data.created_at,
+          parentMessageContent: null // This is a new message, not a reply
+        });
+
+        // Message will be added by the subscription handler
         setSelectedFiles([]);
-        scrollToBottom();
       }
     } catch (error) {
       console.error('Error sending message:', error);

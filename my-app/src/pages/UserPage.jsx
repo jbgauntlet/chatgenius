@@ -1331,6 +1331,8 @@ function UserPage() {
                   results={searchResults}
                   loading={isSearching}
                   onMessageClick={handleSearchResultClick}
+                  workspaceId={currentWorkspace.id}
+                  currentUser={currentUser}
                 />
               ) : (
                 (selectedChannel || selectedUser) && (

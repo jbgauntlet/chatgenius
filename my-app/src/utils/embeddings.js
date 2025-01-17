@@ -32,7 +32,6 @@ export async function generateMessageEmbedding({
 }) {
   try {
     // Build rich context string
-    console.log(channelName + "mexican");
     const contextString = `
       Sender: ${senderName || 'Unknown'}
       ${recipientName ? `Recipient: ${recipientName || 'Unknown'}` : ''}

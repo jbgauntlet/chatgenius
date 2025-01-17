@@ -364,7 +364,6 @@ export default function RepliesContent({ parentMessage, workspaceName, channelNa
         }
       });
 
-      console.log(isDirectMessage + "pig");
       // Generate embedding for the reply
       await generateMessageEmbedding({
         messageId: data.id,

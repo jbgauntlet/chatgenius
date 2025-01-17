@@ -38,7 +38,7 @@ export default function UserBotContent({ user, currentUser, workspaceId }) {
         .select('*')
         .or(`and(sender_id.eq.${currentUser.id},recipient_id.eq.${user.id}),and(sender_id.eq.${user.id},recipient_id.eq.${currentUser.id})`)
         .order('created_at', { ascending: false })
-        .limit(3);
+        .limit(5);
 
       if (messagesError) throw messagesError;
 
@@ -73,14 +73,14 @@ export default function UserBotContent({ user, currentUser, workspaceId }) {
           user_id_param: currentUser.id,
           workspace_id_param: workspaceId,
           bot_id_param: user.id,
-          limit_param: 10   
+          limit_param: 5   
         }),
         supabase.rpc('general_bot_vector_search', {
           query_vector: queryEmbedding,
           user_id_param: currentUser.id,
           workspace_id_param: workspaceId,
           bot_id_param: user.id,
-          limit_param: 10
+          limit_param: 5
         })
       ]);
 
@@ -104,22 +104,26 @@ export default function UserBotContent({ user, currentUser, workspaceId }) {
       const systemMessage = `You are ${user.name}'s AI bot. You are currently talking to ${currentUser.name}. 
 
 IMPORTANT INSTRUCTIONS:
-1. For understanding WHAT to say: Use information from all messages in the context below if it relevant otherwise answer as best as you can.
-2. For understanding HOW to say it: Only mimic the writing style, tone, and personality from messages where ${user.name} is the sender.
-3. Your goal is to be helpful while maintaining ${user.name}'s unique communication style.
-
+1. For understanding HOW to say it: Only mimic the writing style, tone, grammar, punctutation, capitalization,and personality from messages where ${user.name} is the sender.
+2. Your goal is to be helpful while maintaining ${user.name}'s unique communication style.
+3. Use the mesage below only as context or a guide. Don respond word for word with one of the messages below.
+4. If the message below is not relevant, respond as best as you can.
+5. Always use the writing style, tone, grammar, punctutation, capitalization,and personality of ${user.name} when responding.
 Current conversation:
 ${formattedContext.currentChat}
 
 Recent direct messages between ${user.name} and ${currentUser.name}:
 ${formattedContext.recentDirectMessages}
 
-Previous relevant messages from ${user.name}:
+Previous relevant messages from ${user.name} (Use this style, capitalization, punctuation, etc.):
 ${formattedContext.relevantUserBotMessages}
 
 Additional context (use for information only):
-${formattedContext.relevantGeneralMessages}`;
+${formattedContext.relevantGeneralMessages}
 
+To reiterate, always use the writing style, tone, grammar, punctutation, capitalization,and personality of ${user.name} when responding.`
+;
+console.log("user.name:", user.name);
       // Send the message to OpenAI with the context
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
