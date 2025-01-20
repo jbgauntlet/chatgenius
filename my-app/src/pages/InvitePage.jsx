@@ -1,3 +1,20 @@
+/**
+ * InvitePage Component
+ * 
+ * A page component that handles workspace invitations.
+ * Validates invite codes and allows users to join workspaces.
+ * 
+ * Features:
+ * - Invite code validation
+ * - Expiration checking
+ * - Authentication verification
+ * - Workspace joining
+ * - Error handling
+ * - Loading states
+ * 
+ * @component
+ */
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -14,17 +31,18 @@ import { supabase } from '../supabaseClient';
 export default function InvitePage() {
   const { id: inviteId } = useParams();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [invite, setInvite] = useState(null);
-  const [workspace, setWorkspace] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
 
-  useEffect(() => {
-    checkAuth();
-    fetchInviteDetails();
-  }, []);
+  // State Management
+  const [loading, setLoading] = useState(true); // Loading state for data fetching
+  const [error, setError] = useState(null); // Error state for operations
+  const [invite, setInvite] = useState(null); // Invite data
+  const [workspace, setWorkspace] = useState(null); // Workspace data
+  const [currentUser, setCurrentUser] = useState(null); // Current user data
 
+  /**
+   * Fetches user data and verifies authentication
+   * Redirects to login if not authenticated
+   */
   const checkAuth = async () => {
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error) {
@@ -48,6 +66,10 @@ export default function InvitePage() {
     }
   };
 
+  /**
+   * Fetches and validates invite details
+   * Checks expiration, usage, and active status
+   */
   const fetchInviteDetails = async () => {
     try {
       // Fetch the invite details
@@ -107,6 +129,10 @@ export default function InvitePage() {
     }
   };
 
+  /**
+   * Handles accepting a workspace invite
+   * Adds user to workspace and marks invite as used
+   */
   const handleAcceptInvite = async () => {
     if (!currentUser) {
       navigate('/login');
@@ -146,6 +172,12 @@ export default function InvitePage() {
       setLoading(false);
     }
   };
+
+  // Component initialization
+  useEffect(() => {
+    checkAuth();
+    fetchInviteDetails();
+  }, []);
 
   if (loading) {
     return (

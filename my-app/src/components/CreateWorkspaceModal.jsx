@@ -1,3 +1,24 @@
+/**
+ * CreateWorkspaceModal Component
+ * 
+ * A modal dialog component for creating new workspaces.
+ * Handles workspace creation with name, description, and visibility settings.
+ * 
+ * Features:
+ * - Workspace name and description input
+ * - Public/private visibility toggle
+ * - Form validation
+ * - Error handling
+ * - Loading states
+ * - Database integration with Supabase
+ * 
+ * @component
+ * @param {Object} props
+ * @param {boolean} props.open - Controls modal visibility
+ * @param {Function} props.onClose - Callback when modal is closed
+ * @param {Function} props.onWorkspaceCreated - Callback when workspace is successfully created
+ */
+
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -18,12 +39,18 @@ import {
 import { supabase } from '../supabaseClient';
 
 export default function CreateWorkspaceModal({ open, onClose, onWorkspaceCreated }) {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [visibility, setVisibility] = useState('private');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  // State Management
+  const [name, setName] = useState(''); // Workspace name
+  const [description, setDescription] = useState(''); // Optional workspace description
+  const [visibility, setVisibility] = useState('private'); // Workspace visibility setting
+  const [loading, setLoading] = useState(false); // Loading state for form submission
+  const [error, setError] = useState(null); // Error state for form validation
 
+  /**
+   * Handles form submission for workspace creation
+   * Creates workspace and adds creator as owner
+   * @param {Event} e - Form submission event
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -72,6 +99,9 @@ export default function CreateWorkspaceModal({ open, onClose, onWorkspaceCreated
     }
   };
 
+  /**
+   * Resets form state and closes modal
+   */
   const handleClose = () => {
     setName('');
     setDescription('');

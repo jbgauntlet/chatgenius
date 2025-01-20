@@ -641,7 +641,7 @@ export default function RepliesContent({ parentMessage, workspaceName, channelNa
                 fontWeight: 700
               }}
             >
-              {parentMessage.users?.name?.charAt(0).toUpperCase()}
+              {parentMessage.users?.name ? parentMessage.users.name.charAt(0).toUpperCase() : ''}
             </Avatar>
             <Typography variant="subtitle2">
               {parentMessage.users?.name}
@@ -709,7 +709,7 @@ export default function RepliesContent({ parentMessage, workspaceName, channelNa
                     fontWeight: 700
                   }}
                 >
-                  {reply.users?.name?.charAt(0).toUpperCase()}
+                  {reply.users?.name ? reply.users.name.charAt(0).toUpperCase() : ''}
                 </Avatar>
                 <Box sx={{ flexGrow: 1 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>

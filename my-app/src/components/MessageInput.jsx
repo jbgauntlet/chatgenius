@@ -1,3 +1,28 @@
+/**
+ * MessageInput Component
+ * 
+ * A rich text input component for composing messages with formatting options,
+ * file attachments, AI assistance, and voice input capabilities.
+ * 
+ * Features:
+ * - Rich text formatting (bold, italic, underline, lists)
+ * - File attachments
+ * - AI-powered writing assistance
+ * - Grammar checking
+ * - Voice input with transcription
+ * - Message enhancement
+ * 
+ * @component
+ * @param {Object} props
+ * @param {string} props.channelId - ID of the current channel
+ * @param {string} props.channelName - Name of the current channel
+ * @param {Function} props.onSendMessage - Callback when a message is sent
+ * @param {Function} props.onFileSelect - Callback when files are selected
+ * @param {boolean} props.uploading - Whether files are currently uploading
+ * @param {Array} props.selectedFiles - Array of selected files
+ * @param {number} [props.padding=3] - Padding around the input component
+ */
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Box, IconButton, CircularProgress, Tooltip } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -17,19 +42,33 @@ import { typeText } from '../utils/textAnimation';
 import MicIcon from '@mui/icons-material/Mic';
 import StopIcon from '@mui/icons-material/Stop';
 
-export default function MessageInput({ channelId, channelName, onSendMessage, onFileSelect, uploading, selectedFiles = [], padding = 3 }) {
-  const [message, setMessage] = useState('');
-  const [showToolbar, setShowToolbar] = useState(false);
-  const [promptMenuAnchor, setPromptMenuAnchor] = useState(null);
-  const [isGrammarChecking, setIsGrammarChecking] = useState(false);
-  const [isEnhancing, setIsEnhancing] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState(null);
-  const [isTranscribing, setIsTranscribing] = useState(false);
-  const fileInputRef = useRef(null);
-  const editorRef = useRef(null);
-  const audioChunks = useRef([]);
+export default function MessageInput({ 
+  channelId, 
+  channelName, 
+  onSendMessage, 
+  onFileSelect, 
+  uploading, 
+  selectedFiles = [], 
+  padding = 3 
+}) {
+  // State Management
+  const [message, setMessage] = useState(''); // Message content
+  const [showToolbar, setShowToolbar] = useState(false); // Formatting toolbar visibility
+  const [promptMenuAnchor, setPromptMenuAnchor] = useState(null); // AI prompt menu anchor
+  const [isGrammarChecking, setIsGrammarChecking] = useState(false); // Grammar check state
+  const [isEnhancing, setIsEnhancing] = useState(false); // Text enhancement state
+  const [isRecording, setIsRecording] = useState(false); // Voice recording state
+  const [mediaRecorder, setMediaRecorder] = useState(null); // Media recorder instance
+  const [isTranscribing, setIsTranscribing] = useState(false); // Voice transcription state
+  
+  // Refs
+  const fileInputRef = useRef(null); // Hidden file input
+  const editorRef = useRef(null); // Rich text editor
+  const audioChunks = useRef([]); // Voice recording chunks
 
+  /**
+   * Adjusts the height of the input field based on content
+   */
   useEffect(() => {
     const adjustHeight = () => {
       if (!editorRef.current) return;
@@ -45,6 +84,10 @@ export default function MessageInput({ channelId, channelName, onSendMessage, on
     adjustHeight();
   }, [message]);
 
+  /**
+   * Handles input changes and updates message state
+   * @param {Event} e - Input change event
+   */
   const handleInput = (e) => {
     const content = e.target.innerHTML;
     // If the content is empty or just whitespace/breaks, clear it completely
@@ -56,6 +99,10 @@ export default function MessageInput({ channelId, channelName, onSendMessage, on
     }
   };
 
+  /**
+   * Handles keyboard events for message submission and backspace
+   * @param {KeyboardEvent} e - Keyboard event
+   */
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -67,11 +114,18 @@ export default function MessageInput({ channelId, channelName, onSendMessage, on
     }
   };
 
+  /**
+   * Applies text formatting commands
+   * @param {string} command - The formatting command to apply
+   */
   const handleFormat = (command) => {
     document.execCommand(command, false, null);
     editorRef.current?.focus();
   };
 
+  /**
+   * Sends the current message and resets input state
+   */
   const handleSend = () => {
     if (!message.trim() && selectedFiles.length === 0) return;
     
@@ -90,40 +144,10 @@ export default function MessageInput({ channelId, channelName, onSendMessage, on
     }
   };
 
-  const canSend = message.trim().length > 0 || selectedFiles.length > 0;
-
-  const buttonStyles = {
-    color: 'grey.600',
-    padding: '4px',
-    '&:hover': {
-      bgcolor: 'transparent',
-      color: 'grey.900',
-    },
-    '&.Mui-disabled': {
-      color: 'grey.300',
-    },
-  };
-
-  const formatButtons = [
-    { icon: <FormatBoldIcon fontSize="small" />, command: 'bold', tooltip: 'Bold' },
-    { icon: <FormatItalicIcon fontSize="small" />, command: 'italic', tooltip: 'Italic' },
-    { icon: <FormatUnderlinedIcon fontSize="small" />, command: 'underline', tooltip: 'Underline' },
-    { icon: <CodeIcon fontSize="small" />, command: 'formatBlock', param: 'pre', tooltip: 'Code' },
-    { icon: <FormatListBulletedIcon fontSize="small" />, command: 'insertUnorderedList', tooltip: 'Bullet List' },
-    { icon: <FormatListNumberedIcon fontSize="small" />, command: 'insertOrderedList', tooltip: 'Numbered List' },
-  ];
-
-  const adjustHeight = () => {
-    if (!editorRef.current) return;
-    
-    // Reset height to auto to get proper scrollHeight
-    editorRef.current.style.height = 'auto';
-    
-    // Set new height based on content
-    const newHeight = Math.min(200, Math.max(24, editorRef.current.scrollHeight));
-    editorRef.current.style.height = `${newHeight}px`;
-  };
-
+  /**
+   * Handles AI-generated text completion
+   * @param {string} generatedText - The AI-generated text
+   */
   const handlePromptComplete = async (generatedText) => {
     if (editorRef.current) {
       editorRef.current.textContent = '';
@@ -132,6 +156,9 @@ export default function MessageInput({ channelId, channelName, onSendMessage, on
     }
   };
 
+  /**
+   * Checks and corrects grammar using OpenAI
+   */
   const handleGrammarCheck = async () => {
     if (!message.trim()) return;
     
@@ -176,6 +203,9 @@ export default function MessageInput({ channelId, channelName, onSendMessage, on
     }
   };
 
+  /**
+   * Enhances text using OpenAI for better clarity and impact
+   */
   const handleEnhanceText = async () => {
     if (!message.trim()) return;
     
@@ -220,6 +250,9 @@ export default function MessageInput({ channelId, channelName, onSendMessage, on
     }
   };
 
+  /**
+   * Starts voice recording for transcription
+   */
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -248,6 +281,9 @@ export default function MessageInput({ channelId, channelName, onSendMessage, on
     }
   };
 
+  /**
+   * Stops voice recording
+   */
   const stopRecording = () => {
     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
       mediaRecorder.stop();
@@ -255,6 +291,10 @@ export default function MessageInput({ channelId, channelName, onSendMessage, on
     }
   };
 
+  /**
+   * Transcribes recorded audio using OpenAI Whisper
+   * @param {Blob} audioBlob - The recorded audio blob
+   */
   const transcribeAudio = async (audioBlob) => {
     setIsTranscribing(true);
     try {
@@ -284,6 +324,32 @@ export default function MessageInput({ channelId, channelName, onSendMessage, on
       setIsTranscribing(false);
     }
   };
+
+  // Determine if message can be sent
+  const canSend = message.trim().length > 0 || selectedFiles.length > 0;
+
+  // Common button styles
+  const buttonStyles = {
+    color: 'grey.600',
+    padding: '4px',
+    '&:hover': {
+      bgcolor: 'transparent',
+      color: 'grey.900',
+    },
+    '&.Mui-disabled': {
+      color: 'grey.300',
+    },
+  };
+
+  // Format button configurations
+  const formatButtons = [
+    { icon: <FormatBoldIcon fontSize="small" />, command: 'bold', tooltip: 'Bold' },
+    { icon: <FormatItalicIcon fontSize="small" />, command: 'italic', tooltip: 'Italic' },
+    { icon: <FormatUnderlinedIcon fontSize="small" />, command: 'underline', tooltip: 'Underline' },
+    { icon: <CodeIcon fontSize="small" />, command: 'formatBlock', param: 'pre', tooltip: 'Code' },
+    { icon: <FormatListBulletedIcon fontSize="small" />, command: 'insertUnorderedList', tooltip: 'Bullet List' },
+    { icon: <FormatListNumberedIcon fontSize="small" />, command: 'insertOrderedList', tooltip: 'Numbered List' },
+  ];
 
   return (
     <Box sx={{ p: padding }}>

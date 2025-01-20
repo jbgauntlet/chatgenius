@@ -1,3 +1,21 @@
+/**
+ * MessageReactions Component
+ * 
+ * A component that handles and displays emoji reactions to messages.
+ * Supports real-time updates, user interaction, and reaction toggling.
+ * 
+ * Features:
+ * - Real-time reaction updates using Supabase subscriptions
+ * - Emoji picker for adding new reactions
+ * - Visual feedback for user's own reactions
+ * - Tooltips showing who reacted
+ * 
+ * @component
+ * @param {Object} props
+ * @param {string} props.messageId - ID of the message to show reactions for
+ * @param {Array} props.initialReactions - Initial reactions data array
+ */
+
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -13,6 +31,7 @@ import EmojiPicker from 'emoji-picker-react';
 import { supabase } from '../supabaseClient';
 
 export default function MessageReactions({ messageId, initialReactions = [] }) {
+  // State Management
   const [reactionMap, setReactionMap] = useState(() => {
     // Initialize map from initial reactions
     const map = {};
@@ -25,10 +44,14 @@ export default function MessageReactions({ messageId, initialReactions = [] }) {
     });
     return map;
   });
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [anchorEl, setAnchorEl] = useState(null); // Emoji picker anchor element
+  const [loading, setLoading] = useState(false); // Loading state for reaction operations
+  const [currentUser, setCurrentUser] = useState(null); // Current user data
 
+  /**
+   * Sets up real-time subscriptions for reaction changes
+   * Handles both new reactions and reaction removals
+   */
   useEffect(() => {
     let mounted = true;
     
@@ -115,6 +138,10 @@ export default function MessageReactions({ messageId, initialReactions = [] }) {
     };
   }, [messageId]);
 
+  /**
+   * Handles emoji selection from the emoji picker
+   * @param {Object} emojiData - Data about the selected emoji
+   */
   const handleEmojiClick = async (emojiData) => {
     if (loading) return;
     setLoading(true);
@@ -137,6 +164,10 @@ export default function MessageReactions({ messageId, initialReactions = [] }) {
     }
   };
 
+  /**
+   * Handles clicking an existing reaction to toggle it
+   * @param {string} emoji - The emoji to toggle
+   */
   const handleReactionClick = async (emoji) => {
     if (loading) return;
     setLoading(true);
@@ -158,6 +189,10 @@ export default function MessageReactions({ messageId, initialReactions = [] }) {
     }
   };
 
+  /**
+   * Handles opening/closing the emoji picker
+   * @param {Event} event - The click event
+   */
   const handleAddReactionClick = (event) => {
     setAnchorEl(anchorEl ? null : event.currentTarget);
   };
@@ -168,6 +203,11 @@ export default function MessageReactions({ messageId, initialReactions = [] }) {
 
   const open = Boolean(anchorEl);
 
+  /**
+   * Formats the tooltip text based on who reacted
+   * @param {Array} users - Array of users who reacted
+   * @returns {string} Formatted tooltip text
+   */
   const formatTooltipText = (users) => {
     if (!users || users.length === 0) return 'No reactions';
     if (users.length === 1) return users[0].name;
@@ -177,6 +217,7 @@ export default function MessageReactions({ messageId, initialReactions = [] }) {
 
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+      {/* Existing Reactions */}
       {Object.entries(reactionMap).map(([emoji, users]) => {
         const hasUserReacted = currentUser && users.some(r => r.userId === currentUser.id);
         return (
@@ -214,6 +255,7 @@ export default function MessageReactions({ messageId, initialReactions = [] }) {
         );
       })}
 
+      {/* Add Reaction Button */}
       <IconButton
         size="small"
         onClick={handleAddReactionClick}
@@ -228,6 +270,7 @@ export default function MessageReactions({ messageId, initialReactions = [] }) {
         <AddReactionOutlinedIcon fontSize="small" />
       </IconButton>
 
+      {/* Emoji Picker Popper */}
       <Popper
         open={open}
         anchorEl={anchorEl}

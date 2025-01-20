@@ -1,3 +1,14 @@
+/**
+ * AiAssistantContent Component
+ * 
+ * A chat interface component for interacting with an AI assistant.
+ * Provides a message history view and input area for user queries.
+ * 
+ * @component
+ * @param {Object} props
+ * @param {Function} props.queryAiAssistant - Function to process user queries and get AI responses
+ */
+
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Box,
@@ -10,21 +21,30 @@ import {
 import SendIcon from '@mui/icons-material/Send';
 
 function AiAssistantContent({ queryAiAssistant }) {
+  // State Management
   const [messages, setMessages] = useState([
     { role: 'assistant', content: 'Hi! I\'m your AI assistant. How can I help you?' }
-  ]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef(null);
+  ]); // Chat message history
+  const [input, setInput] = useState(''); // User input text
+  const [isLoading, setIsLoading] = useState(false); // Loading state for AI responses
+  const messagesEndRef = useRef(null); // Reference for auto-scrolling
 
+  /**
+   * Auto-scrolls to the bottom of the message list when new messages are added
+   */
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Scroll to bottom when messages update
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
+  /**
+   * Handles form submission and processes user queries
+   * @param {Event} e - Form submission event
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!input.trim()) return;

@@ -1,5 +1,26 @@
 /**
- * Simulates typing text into an element
+ * Text Animation Utility Module
+ * 
+ * Provides utilities for animating text input in a typewriter-style effect.
+ * Used for creating natural-looking text animations when displaying AI-generated content.
+ */
+
+/**
+ * Simulates typing text into an element with a typewriter effect
+ * 
+ * This function gradually adds characters to an element's text content,
+ * creating a typing animation effect. It supports a customizable typing speed
+ * and can trigger a callback after each character is typed.
+ * 
+ * @example
+ * // Basic usage
+ * typeText("Hello, world!", element, 50);
+ * 
+ * // With height adjustment callback
+ * typeText("Hello, world!", element, 50, () => {
+ *   element.style.height = 'auto';
+ * });
+ * 
  * @param {string} text - The text to type
  * @param {HTMLElement} element - The element to type into
  * @param {number} speed - Typing speed in milliseconds per character

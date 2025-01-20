@@ -1,3 +1,20 @@
+/**
+ * SearchResults Component
+ * 
+ * A component that displays search results from both exact matches and semantic search.
+ * Supports displaying messages from both channels and direct messages, with rich previews
+ * and interaction capabilities.
+ * 
+ * @component
+ * @param {Object} props
+ * @param {string} props.query - The search query string
+ * @param {Array} props.results - Array of exact match results
+ * @param {boolean} props.loading - Loading state for exact matches
+ * @param {Function} props.onMessageClick - Callback when a message is clicked
+ * @param {string} props.workspaceId - Current workspace ID
+ * @param {Object} props.currentUser - Current user object
+ */
+
 import React, { useEffect, useState } from 'react';
 import {
   Box,
@@ -24,9 +41,14 @@ export default function SearchResults({
   workspaceId,
   currentUser
 }) {
+  // State for semantic search results
   const [semanticResults, setSemanticResults] = useState([]);
   const [loadingSemanticResults, setLoadingSemanticResults] = useState(false);
 
+  /**
+   * Performs semantic search when query changes
+   * Uses embeddings to find semantically similar messages
+   */
   useEffect(() => {
     const fetchSemanticResults = async () => {
       if (!query || !workspaceId || !currentUser) return;
@@ -36,7 +58,7 @@ export default function SearchResults({
         // Generate embedding for the search query
         const queryEmbedding = await generateEmbedding(query);
 
-        // Perform vector search
+        // Perform vector search for similar messages
         const { data: vectorResults, error } = await supabase
           .rpc('vector_search', {
             query_vector: queryEmbedding,
@@ -53,13 +75,13 @@ export default function SearchResults({
         });
 
         if (error) throw error;
-        console.log("Vector results:", vectorResults);
-        // Get unique message IDs from vector results, excluding those already in results
+        
+        // Filter out duplicates from exact matches
         const existingIds = new Set(results.map(r => r.message_id || r.id));
         const uniqueMessageIds = vectorResults
           .filter(r => !existingIds.has(r.message_id))
           .map(r => r.message_id);
-console.log("Unique message IDs:", uniqueMessageIds);
+
         if (uniqueMessageIds.length === 0) {
           setSemanticResults([]);
           return;
@@ -94,9 +116,6 @@ console.log("Unique message IDs:", uniqueMessageIds);
             .in('id', uniqueMessageIds)
         ]);
 
-        console.log("Messages result:", messagesResult);
-        console.log("DM result:", dmResult);
-
         if (messagesResult.error) throw messagesResult.error;
         if (dmResult.error) throw dmResult.error;
 
@@ -104,7 +123,7 @@ console.log("Unique message IDs:", uniqueMessageIds);
         const allMessages = [...(messagesResult.data || []), ...(dmResult.data || [])];
         const messageMap = new Map(allMessages.map(m => [m.id, m]));
         
-        // Sort messages based on the order from vector search
+        // Sort messages based on vector search order
         const sortedMessages = vectorResults
           .filter(r => messageMap.has(r.message_id))
           .map(r => messageMap.get(r.message_id));
@@ -121,6 +140,11 @@ console.log("Unique message IDs:", uniqueMessageIds);
     fetchSemanticResults();
   }, [query, workspaceId, currentUser, results]);
 
+  /**
+   * Renders a preview of a message with metadata and content
+   * @param {Object} message - The message object to render
+   * @returns {JSX.Element} The rendered message preview
+   */
   const renderMessagePreview = (message) => {
     const isDirectMessage = !message.channel_id;
     const isThreadReply = Boolean(message.parent_message_id);

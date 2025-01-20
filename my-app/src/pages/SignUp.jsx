@@ -1,3 +1,20 @@
+/**
+ * SignUp Page Component
+ * 
+ * A user registration page that handles new account creation.
+ * Features a clean, modern design with form validation and error handling.
+ * 
+ * Features:
+ * - Email and password registration
+ * - Display name customization
+ * - Form validation
+ * - Error handling
+ * - Email verification flow
+ * - Styled form components
+ * 
+ * @component
+ */
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -14,7 +31,10 @@ import {
 } from '@mui/material';
 import { supabase } from '../supabaseClient';
 
-// Custom styled components - matching Authentication page
+/**
+ * Styled TextField component with custom styling for the registration form
+ * Includes custom border radius, font sizes, and hover/focus states
+ */
 const StyledTextField = styled(TextField)({
   '& .MuiOutlinedInput-root': {
     fontSize: '18px',
@@ -42,6 +62,10 @@ const StyledTextField = styled(TextField)({
   },
 });
 
+/**
+ * Styled Button component with custom styling for the registration form
+ * Includes custom border radius, font sizes, and dimensions
+ */
 const StyledButton = styled(Button)({
   fontSize: '18px',
   padding: '9px 12px',
@@ -53,14 +77,21 @@ const StyledButton = styled(Button)({
 
 export default function SignUp() {
   const navigate = useNavigate();
+
+  // State Management
   const [formState, setFormState] = useState({
     email: '',
     password: '',
     displayName: '',
   });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false); // Loading state for form submission
+  const [error, setError] = useState(null); // Error state for form validation
 
+  /**
+   * Handles form input changes
+   * Updates form state with new values
+   * @param {Event} e - Input change event
+   */
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormState((prev) => ({
@@ -69,6 +100,11 @@ export default function SignUp() {
     }));
   };
 
+  /**
+   * Handles form submission for user registration
+   * Creates new user account and updates profile
+   * @param {Event} e - Form submission event
+   */
   const handleSignUp = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -136,6 +172,7 @@ export default function SignUp() {
           }}
         />
 
+        {/* Page Title */}
         <Typography 
           variant="h1" 
           align="center" 
@@ -151,6 +188,7 @@ export default function SignUp() {
           Sign up for ChatGenius
         </Typography>
 
+        {/* Subtitle */}
         <Typography 
           align="center" 
           sx={{ 
@@ -167,6 +205,7 @@ export default function SignUp() {
           </Box>
         </Typography>
 
+        {/* Registration Form */}
         <form onSubmit={handleSignUp} style={{ width: '100%' }}>
           <Stack spacing={2.5} width="100%">
             {error && (
@@ -214,6 +253,7 @@ export default function SignUp() {
           </Stack>
         </form>
 
+        {/* Sign In Link */}
         <Box sx={{ 
           mt: 3, 
           textAlign: 'center',

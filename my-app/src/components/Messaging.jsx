@@ -1,3 +1,15 @@
+/**
+ * @fileoverview Main messaging component that handles real-time chat functionality,
+ * file attachments, and message threading for workspace channels.
+ * 
+ * Key features:
+ * - Real-time message updates using Supabase subscriptions
+ * - File upload and attachment handling
+ * - Message reactions and threading
+ * - Sanitized HTML rendering
+ * - Auto-scrolling behavior
+ */
+
 import React, { useState, useEffect, useRef, memo } from 'react';
 import {
   Box,
@@ -23,20 +35,37 @@ import DOMPurify from 'dompurify';
 import { getAvatarColor } from '../utils/colors';
 import { generateMessageEmbedding } from '../utils/embeddings';
 
+/**
+ * Main messaging component for displaying and managing channel messages
+ * @param {string} channelId - Unique identifier for the current channel
+ * @param {string} channelName - Display name of the current channel
+ * @param {string} workspaceId - Unique identifier for the current workspace
+ * @param {string} workspaceName - Display name of the current workspace
+ * @param {Function} onThreadClick - Callback handler for thread interactions
+ */
 export default function Messaging({ channelId, channelName, workspaceId, workspaceName, onThreadClick }) {
+  // State management for messages, file uploads, and UI
   const [messages, setMessages] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploadProgress, setUploadProgress] = useState({});
   const messageEndRef = useRef(null);
 
+  /**
+   * Smoothly scrolls the message container to the latest message
+   */
   const scrollToBottom = () => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  /**
+   * Sets up real-time message subscription and initial message fetch
+   * Handles new message insertions with duplicate detection
+   */
   useEffect(() => {
     fetchMessages();
 
+    // Set up real-time subscription for new messages
     const channel = supabase
       .channel('public:messages')
       .on('postgres_changes', { 
@@ -45,10 +74,10 @@ export default function Messaging({ channelId, channelName, workspaceId, workspa
         table: 'messages', 
         filter: `channel_id=eq.${channelId}` 
       }, async (payload) => {
-        // Only process if it's not a thread reply
+        // Skip thread replies
         if (payload.new.parent_message_id) return;
 
-        // Fetch the complete message data including sender info
+        // Fetch complete message data including sender info
         const { data: messageData, error } = await supabase
           .from("messages")
           .select(`
@@ -66,9 +95,8 @@ export default function Messaging({ channelId, channelName, workspaceId, workspa
           return;
         }
 
-        // Check for duplicates before adding
+        // Add new message with duplicate detection
         setMessages(prev => {
-          // More strict duplicate check
           const isDuplicate = prev.some(msg => 
             msg.id === messageData.id || 
             (msg.content === messageData.content && 
@@ -82,19 +110,30 @@ export default function Messaging({ channelId, channelName, workspaceId, workspa
       })
       .subscribe();
 
+    // Cleanup subscription on unmount
     return () => {
       supabase.removeChannel(channel);
     };
   }, [channelId, channelName, workspaceId]);
 
+  /**
+   * Effect hook to auto-scroll to bottom when new messages arrive
+   */
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
+  /**
+   * Effect hook to clear selected files when changing channels
+   */
   useEffect(() => {
     setSelectedFiles([]);
   }, [channelId]);
 
+  /**
+   * Fetches messages for the current channel including user info and reactions
+   * Transforms the reaction data into a format suitable for the MessageReactions component
+   */
   async function fetchMessages() {
     const { data, error } = await supabase
       .from("messages")
@@ -152,15 +191,28 @@ export default function Messaging({ channelId, channelName, workspaceId, workspa
     }
   }
 
+  /**
+   * Handles file selection from the file input
+   * @param {Event} event - The file input change event
+   */
   const handleFileSelect = async (event) => {
     const files = Array.from(event.target.files);
     setSelectedFiles(prev => [...prev, ...files]);
   };
 
+  /**
+   * Removes a file from the selected files list
+   * @param {number} index - Index of the file to remove
+   */
   const removeSelectedFile = (index) => {
     setSelectedFiles(files => files.filter((_, i) => i !== index));
   };
 
+  /**
+   * Uploads a single file to Supabase storage
+   * Creates a unique filename and handles upload progress
+   * @param {File} file - The file to upload
+   */
   const uploadFile = async (file) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -198,6 +250,14 @@ export default function Messaging({ channelId, channelName, workspaceId, workspa
     }
   };
 
+  /**
+   * Handles sending a new message with optional file attachments
+   * - Uploads any attached files to Supabase storage
+   * - Creates a new message record with file attachments
+   * - Generates embeddings for the message content
+   * - Triggers real-time updates through subscription
+   * @param {string} message - The message content to send
+   */
   const handleSendMessage = async (message) => {
     if (!message.trim() && selectedFiles.length === 0) return;
 
@@ -264,6 +324,11 @@ export default function Messaging({ channelId, channelName, workspaceId, workspa
     }
   };
 
+  /**
+   * Creates a signed URL for accessing a file in Supabase storage
+   * @param {string} path - The storage path of the file
+   * @returns {Promise<string|null>} The signed URL or null if error
+   */
   const getSignedUrl = async (path) => {
     const { data, error } = await supabase.storage
       .from('private-files')
@@ -276,12 +341,22 @@ export default function Messaging({ channelId, channelName, workspaceId, workspa
     return data.signedUrl;
   };
 
+  /**
+   * Memoized component for rendering file attachments
+   * Handles signed URL generation and refresh for secure file access
+   * @param {Object} props - Component props
+   * @param {Object} props.attachment - Attachment metadata including path and type
+   */
   const AttachmentItem = memo(({ attachment }) => {
     const [signedUrl, setSignedUrl] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const isImage = attachment.type.startsWith('image/');
     const urlExpiryRef = useRef(null);
     
+    /**
+     * Refreshes the signed URL if expired or not yet generated
+     * Creates a URL valid for 7 days (maximum allowed)
+     */
     const refreshSignedUrl = async () => {
       // If we have a valid URL that hasn't expired, don't refresh
       if (signedUrl && urlExpiryRef.current && Date.now() < urlExpiryRef.current) {
@@ -307,10 +382,17 @@ export default function Messaging({ channelId, channelName, workspaceId, workspa
       }
     };
     
+    /**
+     * Effect hook to refresh signed URL when attachment path changes
+     */
     useEffect(() => {
       refreshSignedUrl();
     }, [attachment.path]);
 
+    /**
+     * Handles file download with URL refresh if expired
+     * Downloads the file using the signed URL and triggers browser download
+     */
     const handleDownload = async () => {
       try {
         // Try to fetch with current URL
@@ -332,6 +414,10 @@ export default function Messaging({ channelId, channelName, workspaceId, workspa
       }
     };
 
+    /**
+     * Triggers the browser's download mechanism for a blob
+     * @param {Blob} blob - The file blob to download
+     */
     const triggerDownload = (blob) => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -343,6 +429,11 @@ export default function Messaging({ channelId, channelName, workspaceId, workspa
       document.body.removeChild(a);
     };
 
+    /**
+     * Handles clicking on file links
+     * Refreshes URL if expired before opening in new tab
+     * @param {Event} e - Click event
+     */
     const handleLinkClick = async (e) => {
       e.preventDefault();
       // Try to open the URL, if it fails (expired), refresh and try again
@@ -359,6 +450,9 @@ export default function Messaging({ channelId, channelName, workspaceId, workspa
       }
     };
 
+    /**
+     * Loading state UI for attachment
+     */
     if (isLoading) {
       return (
         <Box
@@ -378,6 +472,9 @@ export default function Messaging({ channelId, channelName, workspaceId, workspa
       );
     }
     
+    /**
+     * Image attachment UI with preview and download options
+     */
     if (isImage) {
       return (
         <Box
@@ -479,14 +576,36 @@ export default function Messaging({ channelId, channelName, workspaceId, workspa
     );
   });
 
+  /**
+   * Renders a file attachment component
+   * @param {Object} attachment - The attachment object containing file metadata
+   * @returns {JSX.Element} The AttachmentItem component
+   */
   const renderAttachment = (attachment) => {
     return <AttachmentItem key={attachment.path} attachment={attachment} />;
   };
 
+  /**
+   * Handles clicking the reply button on a message
+   * @param {Object} message - The message being replied to
+   */
   const handleReplyClick = (message) => {
     onThreadClick(message);
   };
 
+  /**
+   * Renders a single message with sender info, content, attachments, and reactions
+   * Features:
+   * - Avatar with user initial
+   * - Sender name and timestamp
+   * - Sanitized message content
+   * - File attachments
+   * - Message reactions
+   * - Hover actions (reply)
+   * 
+   * @param {Object} message - The message object to render
+   * @returns {JSX.Element} The message component
+   */
   const renderMessage = (message) => (
     <Box
       key={message.id}
@@ -511,7 +630,7 @@ export default function Messaging({ channelId, channelName, workspaceId, workspa
             fontWeight: 700
           }}
         >
-          {message.users.name.charAt(0).toUpperCase()}
+          {message.users?.name ? message.users.name.charAt(0).toUpperCase() : ''}
         </Avatar>
         <Box sx={{ flexGrow: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
@@ -598,15 +717,22 @@ export default function Messaging({ channelId, channelName, workspaceId, workspa
     </Box>
   );
 
+  /**
+   * Main component render
+   * Layout structure:
+   * - Messages area with auto-scroll
+   * - File upload preview with progress indicators
+   * - Message input with file attachment support
+   */
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Messages Area */}
+      {/* Messages Area with Auto-scroll */}
       <Box sx={{ flexGrow: 1, overflow: 'auto', p: 2 }}>
         {messages.map(message => renderMessage(message))}
         <div ref={messageEndRef} />
       </Box>
 
-      {/* File Upload Preview */}
+      {/* File Upload Preview with Progress Indicators */}
       {selectedFiles.length > 0 && (
         <Box sx={{ mb: 2 }}>
           {selectedFiles.map((file, index) => (
@@ -634,6 +760,7 @@ export default function Messaging({ channelId, channelName, workspaceId, workspa
               >
                 <CloseIcon fontSize="small" />
               </IconButton>
+              {/* Upload Progress Indicator */}
               {uploading && uploadProgress[file.name] !== undefined && (
                 <Box
                   sx={{
@@ -652,7 +779,7 @@ export default function Messaging({ channelId, channelName, workspaceId, workspa
         </Box>
       )}
 
-      {/* Message Input */}
+      {/* Message Input Component */}
       <MessageInput
         channelId={channelId}
         channelName={channelName}
