@@ -80,25 +80,17 @@ export default function SignUp() {
         email: formState.email,
         password: formState.password,
         options: {
-          emailRedirectTo: `${import.meta.env.VITE_HOST}/`
+          emailRedirectTo: `${import.meta.env.VITE_HOST}/`,
+          data: {
+            name: formState.displayName,
+          },
         }
       });
 
       if (authError) throw authError;
 
-      if (authData.user) {
-        // 2. Update the user's display name in the users table
-        const { error: profileError } = await supabase
-          .from('users')
-          .update({ name: formState.displayName })
-          .eq('id', authData.user.id);
-
-        if (profileError) throw profileError;
-
-        // Show success message
-        alert('Please check your email for confirmation link before logging in.');
-        navigate('/');
-      }
+      alert('Please check your email for confirmation link before logging in.');
+      navigate('/');
     } catch (error) {
       console.error('Error signing up:', error);
       setError(error.message);
