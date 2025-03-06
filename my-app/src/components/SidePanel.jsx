@@ -1,25 +1,3 @@
-/**
- * SidePanel Component
- * 
- * A sliding side panel component that can be used to display various types of content.
- * Features smooth animations, a header with title, and customizable content area.
- * 
- * Features:
- * - Smooth slide animation
- * - Customizable header with title
- * - Scrollable content area
- * - Close button
- * - Responsive design
- * 
- * @component
- * @param {Object} props
- * @param {boolean} props.open - Controls panel visibility
- * @param {Function} props.onClose - Callback when panel is closed
- * @param {string} props.type - Type of content being displayed
- * @param {string} props.title - Title displayed in panel header
- * @param {React.ReactNode} props.children - Content to be displayed in panel
- */
-
 import React from 'react';
 import {
   Box,
@@ -52,7 +30,7 @@ export default function SidePanel({
         borderColor: 'divider',
       }}
     >
-      {/* Header Section */}
+      {/* Header */}
       <Box sx={{ 
         p: 2, 
         borderBottom: 1, 
@@ -69,7 +47,7 @@ export default function SidePanel({
         </IconButton>
       </Box>
 
-      {/* Content Section */}
+      {/* Content */}
       <Box sx={{ 
         flexGrow: 1,
         overflow: 'auto',

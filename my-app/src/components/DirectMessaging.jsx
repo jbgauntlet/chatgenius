@@ -1,23 +1,3 @@
-/**
- * DirectMessaging Component
- * 
- * A comprehensive direct messaging interface that enables real-time communication between users.
- * Supports rich text messages, file attachments, reactions, and threaded conversations.
- * 
- * Features:
- * - Real-time message updates using Supabase subscriptions
- * - File attachments with progress tracking
- * - Message reactions
- * - Thread support
- * - Auto-scroll to latest messages
- * - Secure file handling with signed URLs
- * 
- * @param {string} recipientId - ID of the message recipient
- * @param {string} recipientName - Display name of the recipient
- * @param {string} workspaceId - Current workspace context
- * @param {Function} onThreadClick - Callback when a thread is opened
- */
-
 import React, { useState, useEffect, useRef, memo } from 'react';
 import {
   Box,
@@ -39,13 +19,6 @@ import MessageInput from './MessageInput';
 import UserMessageReactions from './UserMessageReactions';
 import { getAvatarColor } from '../utils/colors';
 
-/**
- * Main component state:
- * - messages: Array of message objects with sender/recipient info
- * - uploading: Boolean tracking file upload state
- * - selectedFiles: Array of files selected for upload
- * - uploadProgress: Object mapping filenames to upload progress
- */
 export default function DirectMessaging({ recipientId, recipientName, workspaceId, onThreadClick }) {
   const [messages, setMessages] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -57,10 +30,6 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  /**
-   * Sets up real-time message subscription and fetches existing messages.
-   * Handles both incoming and outgoing messages in the conversation.
-   */
   useEffect(() => {
     let channel;
     
@@ -135,10 +104,6 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
     scrollToBottom();
   }, [messages]);
 
-  /**
-   * Fetches existing messages between users.
-   * Includes sender/recipient info and message reactions.
-   */
   async function fetchMessages() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -204,10 +169,6 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
     }
   }
 
-  /**
-   * Handles file selection and adds files to upload queue.
-   * @param {Event} event - File input change event
-   */
   const handleFileSelect = async (event) => {
     const files = Array.from(event.target.files);
     setSelectedFiles(prev => [...prev, ...files]);
@@ -217,11 +178,6 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
     setSelectedFiles(files => files.filter((_, i) => i !== index));
   };
 
-  /**
-   * Uploads a single file to storage with progress tracking.
-   * @param {File} file - File object to upload
-   * @returns {Promise<Object>} Uploaded file metadata
-   */
   const uploadFile = async (file) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -259,11 +215,6 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
     }
   };
 
-  /**
-   * Sends a new message with optional file attachments.
-   * Handles file uploads and message embedding generation.
-   * @param {string} message - Message content
-   */
   const handleSendMessage = async (message) => {
     if (!message.trim() && selectedFiles.length === 0) return;
 
@@ -332,11 +283,6 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
     }
   };
 
-  /**
-   * Generates a signed URL for file access.
-   * @param {string} path - Storage path of the file
-   * @returns {Promise<string>} Signed URL for file access
-   */
   const getSignedUrl = async (path) => {
     const { data, error } = await supabase.storage
       .from('private-files')
@@ -349,11 +295,7 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
     return data.signedUrl;
   };
 
-  /**
-   * Renders an individual attachment with appropriate UI based on file type.
-   * Handles image previews, downloads, and URL refreshing.
-   */
-  const AttachmentItem = memo(({ attachment }) => {
+  const AttachmentItem = ({ attachment }) => {
     const [signedUrl, setSignedUrl] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const isImage = attachment.type.startsWith('image/');
@@ -540,7 +482,7 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
         </Tooltip>
       </Box>
     );
-  });
+  };
 
   const renderAttachment = (attachment) => {
     return <AttachmentItem key={attachment.path} attachment={attachment} />;
@@ -550,10 +492,6 @@ export default function DirectMessaging({ recipientId, recipientName, workspaceI
     onThreadClick(message);
   };
 
-  /**
-   * Renders a message with sender info, content, attachments, and reactions.
-   * Includes hover actions for thread replies.
-   */
   const renderMessage = (msg) => (
     <Box
       key={msg.id}

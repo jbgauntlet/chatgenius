@@ -1,23 +1,3 @@
-/**
- * MessagePromptMenu Component
- * 
- * A popup menu component that provides AI-powered message generation capabilities.
- * Users can input prompts to generate message content using OpenAI's GPT model.
- * 
- * Features:
- * - AI message generation using GPT-3.5
- * - Real-time loading states
- * - Error handling
- * - Styled popup interface
- * 
- * @component
- * @param {Object} props
- * @param {HTMLElement} props.anchorEl - Element to anchor the popup menu to
- * @param {boolean} props.open - Whether the menu is open
- * @param {Function} props.onClose - Callback when menu is closed
- * @param {Function} props.onPromptComplete - Callback when message generation is complete
- */
-
 import React, { useState } from 'react';
 import {
   Box,
@@ -41,14 +21,9 @@ export default function MessagePromptMenu({
   onClose, 
   onPromptComplete
 }) {
-  // State Management
-  const [prompt, setPrompt] = useState(''); // User's prompt input
-  const [isGenerating, setIsGenerating] = useState(false); // Loading state for AI generation
+  const [prompt, setPrompt] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  /**
-   * Handles form submission and generates AI response
-   * @param {Event} e - Form submission event
-   */
   const handlePromptSubmit = async (e) => {
     e.preventDefault();
     if (!prompt.trim() || isGenerating) return;
@@ -113,7 +88,6 @@ export default function MessagePromptMenu({
           >
             <ClickAwayListener onClickAway={onClose}>
               <Box>
-                {/* Header */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <AutoAwesomeIcon color="primary" />
@@ -126,7 +100,6 @@ export default function MessagePromptMenu({
                   </IconButton>
                 </Box>
 
-                {/* Prompt Input Form */}
                 <form onSubmit={handlePromptSubmit}>
                   <TextField
                     fullWidth

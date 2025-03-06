@@ -1,30 +1,4 @@
-/**
- * @fileoverview Main user interface page component for the chat application.
- * This is the central component that manages the entire chat workspace interface,
- * including channels, direct messages, workspaces, and various interactive features.
- *
- * Key Features:
- * - Workspace management and switching
- * - Channel and direct message handling
- * - Real-time presence system
- * - File attachments and sharing
- * - Message threading
- * - AI assistant integration
- * - Search functionality
- * - User management and permissions
- * - Invite system
- */
-
 import React, { useEffect, useState, useRef } from 'react';
-
-/**
- * Material-UI Components
- * - Layout components (Box, AppBar, Drawer, etc.)
- * - Interactive components (Button, IconButton, etc.)
- * - Data display components (Typography, List, etc.)
- * - Feedback components (Modal, CircularProgress, etc.)
- * - Navigation components (Menu, Popper, etc.)
- */
 import {
   Box,
   AppBar,
@@ -54,17 +28,16 @@ import {
   MenuList,
   ListItemAvatar,
 } from '@mui/material';
-
-/**
- * Material-UI Icons
- * Used for various UI elements and actions throughout the application
- */
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ArrowRightIcon from '@mui/icons-material/ArrowRight';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import TagIcon from '@mui/icons-material/Tag';
 import AddIcon from '@mui/icons-material/Add';
 import CheckIcon from '@mui/icons-material/Check';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
+import Messaging from '../components/Messaging';
+import DirectMessaging from '../components/DirectMessaging';
 import SearchIcon from '@mui/icons-material/Search';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -77,138 +50,80 @@ import ChatIcon from '@mui/icons-material/Chat';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import ChatBubbleIcon from '@mui/icons-material/ChatBubbleOutline';
 import ChatBubbleFilledIcon from '@mui/icons-material/ChatBubble';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
-
-/**
- * React Router
- * Handles navigation and routing within the application
- */
-import { useNavigate } from 'react-router-dom';
-
-/**
- * Database and Utilities
- * - supabase: Database client for real-time features and data management
- * - getAvatarColor: Utility for generating consistent avatar colors
- * - generateEmbedding: Utility for creating message embeddings for AI features
- */
-import { supabase } from '../supabaseClient';
-import { getAvatarColor } from '../utils/colors';
-import { generateEmbedding } from '../utils/embeddings';
-
-/**
- * Custom Components
- * Core functionality components for the chat interface
- */
-import Messaging from '../components/Messaging';
-import DirectMessaging from '../components/DirectMessaging';
 import SidePanel from '../components/SidePanel';
 import AiAssistantContent from '../components/AiAssistantContent';
 import RepliesContent from '../components/RepliesContent';
 import SearchResults from '../components/SearchResults';
 import SearchBar from '../components/SearchBar';
 import HeroSidebar from '../components/HeroSidebar';
+import { getAvatarColor } from '../utils/colors';
 import CreateWorkspaceModal from '../components/CreateWorkspaceModal';
+import { generateEmbedding } from '../utils/embeddings';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
 import UserBotContent from '../components/UserBotContent';
 
-/**
- * UserPage Component
- * Main interface component that serves as the primary workspace view after user login.
- * Manages the entire chat interface including workspaces, channels, and direct messages.
- */
 function UserPage() {
   const navigate = useNavigate();
-
-  /**
-   * State Management
-   * Core application state variables for managing the chat interface
-   */
-
-  // Channel and messaging states
-  const [channels, setChannels] = useState([]); // List of available channels in current workspace
-  const [selectedChannel, setSelectedChannel] = useState(null); // Currently selected channel
-  const [selectedUser, setSelectedUser] = useState(null); // Selected user for direct messaging
-  const [channelsOpen, setChannelsOpen] = useState(true); // Channels list expansion state
-  const [dmsOpen, setDmsOpen] = useState(true); // Direct messages list expansion state
-
-  // User and workspace member states
-  const [users, setUsers] = useState([]); // List of users in current workspace
-  const [currentUser, setCurrentUser] = useState(null); // Currently logged in user
-  const [workspaceMembers, setWorkspaceMembers] = useState([]); // All members in current workspace
-  const [currentUserRole, setCurrentUserRole] = useState(null); // User's role in current workspace
-
-  // Workspace management states
-  const [workspaces, setWorkspaces] = useState([]); // List of all accessible workspaces
-  const [currentWorkspace, setCurrentWorkspace] = useState(null); // Currently selected workspace
-  const [workspaceSwitcherAnchor, setWorkspaceSwitcherAnchor] = useState(null); // Anchor for workspace switcher menu
-  const [workspaceMenuAnchor, setWorkspaceMenuAnchor] = useState(null); // Anchor for workspace settings menu
-  const [userMenuAnchor, setUserMenuAnchor] = useState(null); // Anchor for user menu
-
-  // Modal and UI states
-  const [isCreateChannelOpen, setIsCreateChannelOpen] = useState(false); // Channel creation modal
-  const [isCreateWorkspaceOpen, setIsCreateWorkspaceOpen] = useState(false); // Workspace creation modal
-  const [isWorkspaceSettingsOpen, setIsWorkspaceSettingsOpen] = useState(false); // Workspace settings modal
-  const [isInviteMembersOpen, setIsInviteMembersOpen] = useState(false); // Invite members modal
-  const [isHelpOpen, setIsHelpOpen] = useState(false); // Help panel state
-
-  // Form and input states
-  const [newChannelName, setNewChannelName] = useState(''); // New channel name input
-  const [newWorkspaceName, setNewWorkspaceName] = useState(''); // New workspace name input
-  const [workspaceChanges, setWorkspaceChanges] = useState({ // Workspace settings form
+  const [channels, setChannels] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [selectedChannel, setSelectedChannel] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [channelsOpen, setChannelsOpen] = useState(true);
+  const [dmsOpen, setDmsOpen] = useState(true);
+  const [isCreateChannelOpen, setIsCreateChannelOpen] = useState(false);
+  const [newChannelName, setNewChannelName] = useState('');
+  const [isCreateWorkspaceOpen, setIsCreateWorkspaceOpen] = useState(false);
+  const [newWorkspaceName, setNewWorkspaceName] = useState('');
+  const [workspaces, setWorkspaces] = useState([]);
+  const [currentWorkspace, setCurrentWorkspace] = useState(null);
+  const [workspaceSwitcherAnchor, setWorkspaceSwitcherAnchor] = useState(null);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [selectedHeroButton, setSelectedHeroButton] = useState('home');
+  const [workspaceMenuAnchor, setWorkspaceMenuAnchor] = useState(null);
+  const [isWorkspaceSettingsOpen, setIsWorkspaceSettingsOpen] = useState(false);
+  const [workspaceChanges, setWorkspaceChanges] = useState({
     name: '',
     description: ''
   });
-
-  // Workspace settings states
-  const [isWorkspaceEdited, setIsWorkspaceEdited] = useState(false); // Track workspace setting changes
-  const [isSaving, setIsSaving] = useState(false); // Saving state for workspace settings
-  const [saveError, setSaveError] = useState(null); // Error state for workspace settings
-
-  // Invite system states
-  const [inviteLink, setInviteLink] = useState(''); // Generated invite link
-  const [inviteCode, setInviteCode] = useState(''); // Generated invite code
-  const [activeInvites, setActiveInvites] = useState([]); // List of active workspace invites
-
-  // Side panel and UI feature states
+  const [isWorkspaceEdited, setIsWorkspaceEdited] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const [currentUserRole, setCurrentUserRole] = useState(null);
+  const [userMenuAnchor, setUserMenuAnchor] = useState(null);
+  const [workspaceMembers, setWorkspaceMembers] = useState([]);
+  const [isInviteMembersOpen, setIsInviteMembersOpen] = useState(false);
+  const [inviteLink, setInviteLink] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
+  const [activeInvites, setActiveInvites] = useState([]);
   const [sidePanelState, setSidePanelState] = useState({
-    type: null, // Type of content to show: 'help' | 'replies' | 'assistant' | 'user-bot' | null
-    isOpen: false, // Panel visibility
-    data: null // Data to pass to the panel content
+    type: null, // 'help' | 'replies' | 'assistant' | 'user-bot' | null
+    isOpen: false,
+    data: null
   });
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [currentSearchQuery, setCurrentSearchQuery] = useState('');
 
-  // Search functionality states
-  const [searchResults, setSearchResults] = useState([]); // Global search results
-  const [isSearching, setIsSearching] = useState(false); // Search in progress indicator
-  const [showSearchResults, setShowSearchResults] = useState(false); // Search results visibility
-  const [currentSearchQuery, setCurrentSearchQuery] = useState(''); // Current search query
-
-  /**
-   * AI Assistant Query Handler
-   * Processes user queries using RAG (Retrieval Augmented Generation) approach:
-   * 1. Generates embeddings for the query
-   * 2. Performs similarity search against stored message vectors
-   * 3. Uses retrieved context with OpenAI to generate responses
-   * 
-   * @param {string} userQuery - The user's question or request
-   * @param {string} workspaceId - Current workspace ID for context
-   * @returns {Promise<string>} AI-generated response based on workspace context
-   */
   async function queryAiAssistant(userQuery, workspaceId) {
     if (!workspaceId) {
       throw new Error('No workspace selected');
     }
 
+    // Use currentUser state instead of making an auth call
     if (!currentUser) {
       throw new Error('No user found');
     }
 
-    // Generate query embedding for similarity search
+    // Generate the query embedding
     const queryEmbedding = await generateEmbedding(userQuery);
 
-    // Perform similarity search against stored message vectors
+    // Perform a similarity search on the vectors
     const { data, error } = await supabase
       .rpc('vector_search', {
         query_vector: queryEmbedding,
-        top_k: 5, // Retrieve top 5 most similar messages
+        top_k: 5,
         workspace_id: workspaceId,
         user_id: currentUser.id
       });
@@ -225,15 +140,21 @@ function UserPage() {
       throw new Error('Error searching messages');
     }
 
-    // Extract relevant messages for context
+    // Extract relevant messages
     const relevantMessages = data.map((item) => item.content);
+
+    // Combine context and query for RAG
     const context = relevantMessages.join("\n");
+    console.log("Context being sent to OpenAI:", {
+      context,
+      relevantMessages,
+      userQuery
+    });
     
-    // System prompt for AI assistant
     const systemPrompt = "You are a helpful AI assistant in a chat application. Use the provided message history as context to answer the user's question. If the context doesn't help answer the question, just say so.";
     
     try {
-      // Send context and query to OpenAI for response generation
+      // Send the final input to OpenAI for a response
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -262,20 +183,13 @@ function UserPage() {
     }
   }
 
-  /**
-   * Core Application Effects
-   * Setup real-time subscriptions, user presence, and initial data loading
-   */
   useEffect(() => {
     fetchUserData();
     fetchWorkspaces();
     fetchChannels();
     fetchUsers();
 
-    /**
-     * Real-time User Presence System
-     * Handles user online/offline status and presence updates
-     */
+    // Set up real-time subscription for user presence
     const presenceChannel = supabase
       .channel('user_presence_changes')
       .on('postgres_changes', {
@@ -284,7 +198,7 @@ function UserPage() {
         table: 'user_presence'
       }, async (payload) => {
         console.log('Presence change received:', payload);
-        // Update users list with new presence data
+        // Update the users list with new presence data
         setUsers(prevUsers => {
           console.log('Previous users:', prevUsers);
           const updatedUsers = prevUsers.map(user => {
@@ -305,7 +219,7 @@ function UserPage() {
           return updatedUsers;
         });
 
-        // Update currentUser presence if change is for them
+        // Also update currentUser if the presence change is for them
         const { data: { user } } = await supabase.auth.getUser();
         if (user && user.id === payload.new.user_id) {
           setCurrentUser(prevUser => ({
@@ -320,10 +234,7 @@ function UserPage() {
       })
       .subscribe();
 
-    /**
-     * Periodic Presence Updates
-     * Updates user's active status every 30 seconds
-     */
+    // Set up presence update interval
     const updatePresence = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -341,14 +252,11 @@ function UserPage() {
       }
     };
 
-    // Initialize presence system
+    // Update presence immediately and set up interval
     updatePresence();
-    const presenceInterval = setInterval(updatePresence, 30000);
+    const presenceInterval = setInterval(updatePresence, 30000); // Update every 30 seconds
 
-    /**
-     * Visibility Change Handler
-     * Updates user status based on tab visibility
-     */
+    // Set up visibility change handler
     const handleVisibilityChange = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -369,12 +277,11 @@ function UserPage() {
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Cleanup function
     return () => {
       supabase.removeChannel(presenceChannel);
       clearInterval(presenceInterval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      // Set status to away when component unmounts
+      // Set status to offline when component unmounts
       const handleUnmount = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -389,53 +296,20 @@ function UserPage() {
     };
   }, []);
 
-  /**
-   * Data Fetching Effects
-   * Handle dependencies between workspace, channels, and user data
-   */
-
-  // Fetch user role when workspace changes
+  // Add effect to fetch role when workspace changes
   useEffect(() => {
     if (currentWorkspace && currentUser) {
       fetchUserWorkspaceRole();
     }
   }, [currentWorkspace, currentUser]);
 
-  // Fetch workspace members when workspace changes
+  // Add effect to fetch workspace members when workspace changes
   useEffect(() => {
     if (currentWorkspace) {
       fetchWorkspaceMembers();
     }
   }, [currentWorkspace]);
 
-  // Fetch channels when workspace changes
-  useEffect(() => {
-    if (currentWorkspace) {
-      fetchChannels();
-      setSelectedChannel(null); // Clear selected channel when switching workspaces
-    } else {
-      setChannels([]); // Clear channels if no workspace is selected
-    }
-  }, [currentWorkspace]);
-
-  // Fetch users when workspace changes
-  useEffect(() => {
-    if (currentWorkspace) {
-      fetchUsers();
-    } else {
-      setUsers([]); // Clear users if no workspace is selected
-    }
-  }, [currentWorkspace]);
-
-  /**
-   * Data Fetching Functions
-   * Core functions for retrieving application data from Supabase
-   */
-
-  /**
-   * Fetches current user data including presence information
-   * Updates currentUser state with user details and presence status
-   */
   const fetchUserData = async () => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
@@ -466,10 +340,6 @@ function UserPage() {
     }
   };
 
-  /**
-   * Fetches channels for the current workspace
-   * Updates channels state and selects first channel by default
-   */
   const fetchChannels = async () => {
     if (!currentWorkspace) return; // Don't fetch if no workspace is selected
 
@@ -488,10 +358,16 @@ function UserPage() {
     }
   };
 
-  /**
-   * Fetches users in the current workspace with their presence data
-   * Excludes the current user from the results
-   */
+  // Add useEffect to refetch channels when workspace changes
+  useEffect(() => {
+    if (currentWorkspace) {
+      fetchChannels();
+      setSelectedChannel(null); // Clear selected channel when switching workspaces
+    } else {
+      setChannels([]); // Clear channels if no workspace is selected
+    }
+  }, [currentWorkspace]);
+
   const fetchUsers = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user || !currentWorkspace) return;
@@ -526,10 +402,15 @@ function UserPage() {
     }
   };
 
-  /**
-   * Fetches all workspaces the user has access to
-   * Handles workspace selection persistence using localStorage
-   */
+  // Add effect to refetch users when workspace changes
+  useEffect(() => {
+    if (currentWorkspace) {
+      fetchUsers();
+    } else {
+      setUsers([]); // Clear users if no workspace is selected
+    }
+  }, [currentWorkspace]);
+
   const fetchWorkspaces = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -565,10 +446,6 @@ function UserPage() {
     }
   };
 
-  /**
-   * Fetches the user's role in the current workspace
-   * Updates currentUserRole state for permission management
-   */
   const fetchUserWorkspaceRole = async () => {
     if (!currentWorkspace || !currentUser) return;
 
@@ -586,10 +463,6 @@ function UserPage() {
     }
   };
 
-  /**
-   * Fetches all members of the current workspace with their roles
-   * Updates workspaceMembers state for member management
-   */
   const fetchWorkspaceMembers = async () => {
     if (!currentWorkspace) return;
 
@@ -612,14 +485,6 @@ function UserPage() {
     }
   };
 
-  /**
-   * Authentication and Navigation Handlers
-   */
-
-  /**
-   * Handles user logout
-   * Signs out the user and redirects to home page
-   */
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
@@ -629,29 +494,14 @@ function UserPage() {
     }
   };
 
-  /**
-   * UI Interaction Handlers
-   * Functions for managing UI state and user interactions
-   */
-
-  /**
-   * Toggles the channels list expansion state
-   */
   const handleChannelsClick = () => {
     setChannelsOpen(!channelsOpen);
   };
 
-  /**
-   * Toggles the direct messages list expansion state
-   */
   const handleDMsClick = () => {
     setDmsOpen(!dmsOpen);
   };
 
-  /**
-   * Handles user selection for direct messaging
-   * @param {Object} user - The selected user object
-   */
   const handleUserSelect = (user) => {
     setSelectedUser(user);
     setSelectedChannel(null); // Deselect channel when selecting a DM
@@ -665,10 +515,6 @@ function UserPage() {
     }
   };
 
-  /**
-   * Handles channel selection
-   * @param {Object} channel - The selected channel object
-   */
   const handleChannelSelect = (channel) => {
     setSelectedChannel(channel);
     setSelectedUser(null); // Deselect DM when selecting a channel
@@ -682,14 +528,6 @@ function UserPage() {
     }
   };
 
-  /**
-   * Channel Management Functions
-   */
-
-  /**
-   * Creates a new channel in the current workspace
-   * Updates channels list and selects the new channel
-   */
   const handleCreateChannel = async () => {
     if (!newChannelName.trim() || !currentWorkspace) return;
 
@@ -714,15 +552,6 @@ function UserPage() {
     }
   };
 
-  /**
-   * Workspace Management Functions
-   */
-
-  /**
-   * Handles workspace creation completion
-   * Updates workspaces list and sets new workspace as current
-   * @param {Object} workspace - The newly created workspace object
-   */
   const handleCreateWorkspace = async (workspace) => {
     setIsCreateWorkspaceOpen(false);
     // Update the workspaces list and set the new workspace as current
@@ -730,44 +559,20 @@ function UserPage() {
     setCurrentWorkspace(workspace);
   };
 
-  /**
-   * Workspace Switcher Menu Handlers
-   */
-
-  /**
-   * Toggles the workspace switcher menu
-   * @param {Event} event - The click event
-   */
   const handleWorkspaceSwitcherClick = (event) => {
     setWorkspaceSwitcherAnchor(workspaceSwitcherAnchor ? null : event.currentTarget);
   };
 
-  /**
-   * Closes the workspace switcher menu
-   */
   const handleWorkspaceSwitcherClose = () => {
     setWorkspaceSwitcherAnchor(null);
   };
 
-  /**
-   * Handles workspace selection from the switcher menu
-   * Updates current workspace and persists selection
-   * @param {Object} workspace - The selected workspace object
-   */
   const handleWorkspaceSelect = (workspace) => {
     setCurrentWorkspace(workspace);
     localStorage.setItem('currentWorkspaceId', workspace.id);
     handleWorkspaceSwitcherClose();
   };
 
-  /**
-   * Side Panel Management
-   */
-
-  /**
-   * Closes the side panel
-   * Resets panel state and content
-   */
   const handleSidePanelClose = () => {
     setSidePanelState({
       type: null,
@@ -776,9 +581,6 @@ function UserPage() {
     });
   };
 
-  /**
-   * Opens the AI assistant in the side panel
-   */
   const handleHelpClick = () => {
     setSidePanelState({
       type: 'assistant',
@@ -787,33 +589,14 @@ function UserPage() {
     });
   };
 
-  /**
-   * Workspace Settings Menu Handlers
-   */
-
-  /**
-   * Opens the workspace settings menu
-   * @param {Event} event - The click event
-   */
   const handleWorkspaceMenuClick = (event) => {
     setWorkspaceMenuAnchor(event.currentTarget);
   };
 
-  /**
-   * Closes the workspace settings menu
-   */
   const handleWorkspaceMenuClose = () => {
     setWorkspaceMenuAnchor(null);
   };
 
-  /**
-   * Workspace Settings Management
-   */
-
-  /**
-   * Opens the workspace settings modal
-   * Initializes form with current workspace data
-   */
   const handleWorkspaceSettingsOpen = () => {
     setWorkspaceChanges({
       name: currentWorkspace?.name || '',
@@ -823,21 +606,12 @@ function UserPage() {
     handleWorkspaceMenuClose();
   };
 
-  /**
-   * Closes the workspace settings modal
-   * Resets form state and errors
-   */
   const handleWorkspaceSettingsClose = () => {
     setIsWorkspaceSettingsOpen(false);
     setIsWorkspaceEdited(false);
     setSaveError(null);
   };
 
-  /**
-   * Handles changes to workspace settings form fields
-   * @param {string} field - The field being changed (name or description)
-   * @returns {Function} Event handler for the field change
-   */
   const handleWorkspaceChange = (field) => (e) => {
     const newValue = e.target.value;
     setWorkspaceChanges(prev => ({
@@ -847,10 +621,6 @@ function UserPage() {
     setIsWorkspaceEdited(true);
   };
 
-  /**
-   * Saves workspace setting changes
-   * Updates workspace data in database and local state
-   */
   const handleSaveWorkspaceChanges = async () => {
     setIsSaving(true);
     setSaveError(null);
@@ -883,15 +653,14 @@ function UserPage() {
     }
   };
 
-  /**
-   * Member Management Functions
-   */
+  const handleUserMenuClick = (event) => {
+    setUserMenuAnchor(event.currentTarget);
+  };
 
-  /**
-   * Handles removing a member from the workspace
-   * Only available to workspace owners
-   * @param {string} memberId - ID of the member to remove
-   */
+  const handleUserMenuClose = () => {
+    setUserMenuAnchor(null);
+  };
+
   const handleRemoveMember = async (memberId) => {
     if (!currentWorkspace || currentUserRole !== 'owner') return;
 
@@ -910,17 +679,10 @@ function UserPage() {
       );
     } catch (error) {
       console.error('Error removing member:', error);
+      // You might want to show an error message to the user here
     }
   };
 
-  /**
-   * Invite System Functions
-   */
-
-  /**
-   * Generates a new invite link for the workspace
-   * Creates an invite record and generates a shareable URL
-   */
   const handleGenerateInviteLink = async () => {
     if (!currentWorkspace) return;
 
@@ -948,10 +710,6 @@ function UserPage() {
     }
   };
 
-  /**
-   * Generates a new invite code for the workspace
-   * Creates an invite record and returns the ID as a code
-   */
   const handleGenerateInviteCode = async () => {
     if (!currentWorkspace) return;
 
@@ -977,10 +735,6 @@ function UserPage() {
     }
   };
 
-  /**
-   * Fetches active (non-expired, non-used) invites for the workspace
-   * Updates activeInvites state with invite data
-   */
   const fetchActiveInvites = async () => {
     if (!currentWorkspace) return;
 
@@ -1006,10 +760,6 @@ function UserPage() {
     }
   };
 
-  /**
-   * Revokes (deactivates) an invite
-   * @param {string} inviteId - ID of the invite to revoke
-   */
   const handleRevokeInvite = async (inviteId) => {
     try {
       const { error } = await supabase
@@ -1026,21 +776,13 @@ function UserPage() {
     }
   };
 
-  // Fetch active invites when the invite modal opens
+  // Fetch active invites when the modal opens
   useEffect(() => {
     if (isInviteMembersOpen) {
       fetchActiveInvites();
     }
   }, [isInviteMembersOpen]);
 
-  /**
-   * Message Threading Functions
-   */
-
-  /**
-   * Handles opening the thread panel for a message
-   * @param {Object} message - The parent message to show replies for
-   */
   const handleThreadClick = (message) => {
     setSidePanelState({
       type: 'replies',
@@ -1049,15 +791,6 @@ function UserPage() {
     });
   };
 
-  /**
-   * Search Functionality
-   */
-
-  /**
-   * Performs a global search across messages and direct messages
-   * Updates search results and UI state
-   * @param {string} query - The search query
-   */
   const handleGlobalSearch = async (query) => {
     setShowSearchResults(true);
     setIsSearching(true);
@@ -1110,11 +843,7 @@ function UserPage() {
     }
   };
 
-  /**
-   * Handles clicking on a search result
-   * Navigates to the appropriate channel/DM and opens thread if needed
-   * @param {Object} message - The message that was clicked
-   */
+  // Add search result click handler
   const handleSearchResultClick = async (message) => {
     const isDirectMessage = !message.channel_id;
     const isThreadReply = Boolean(message.parent_message_id);
@@ -1168,14 +897,6 @@ function UserPage() {
     setShowSearchResults(false);
   };
 
-  /**
-   * User Bot Functions
-   */
-
-  /**
-   * Opens the user bot panel for a specific user
-   * @param {Object} user - The user to open the bot for
-   */
   const handleUserBotClick = (user) => {
     setSidePanelState({
       type: 'user-bot',
@@ -1184,15 +905,6 @@ function UserPage() {
     });
   };
 
-  /**
-   * Component Render
-   * Main application layout structure:
-   * - Top bar with search and help
-   * - Hero sidebar for workspace navigation
-   * - Channel sidebar for workspace content navigation
-   * - Main content area for messages
-   * - Side panel for threads, AI assistant, etc.
-   */
   return (
     <Box sx={{ 
       display: 'flex', 
@@ -1226,7 +938,7 @@ function UserPage() {
           {/* Left section - reserved for future use */}
           <Box sx={{ width: 240, visibility: 'hidden' }} />
 
-          {/* Center section - Global Search */}
+          {/* Center section - Search bar */}
           <SearchBar
             users={users}
             channels={channels}
@@ -1241,7 +953,7 @@ function UserPage() {
             onSearch={handleGlobalSearch}
           />
 
-          {/* Right section - Help Button */}
+          {/* Right section - Help */}
           <Box sx={{ display: 'flex', alignItems: 'center', ml: 'auto' }}>
             <IconButton
               onClick={handleHelpClick}
@@ -1261,13 +973,13 @@ function UserPage() {
         </Toolbar>
       </AppBar>
 
-      {/* Main Content Container */}
+      {/* Main content container */}
       <Box sx={{ 
         display: 'flex', 
         flexGrow: 1, 
         minHeight: 0,
       }}>
-        {/* Hero Sidebar - Workspace Navigation */}
+        {/* Hero Sidebar */}
         <HeroSidebar
           currentUser={currentUser}
           workspaces={workspaces}
@@ -1277,7 +989,7 @@ function UserPage() {
           onLogout={handleLogout}
         />
 
-        {/* Main Application Area */}
+        {/* Rounded container for channel sidebar, content area, and settings */}
         <Box sx={{ 
           display: 'flex',
           flexGrow: 1,
@@ -1318,14 +1030,12 @@ function UserPage() {
               },
             }}
           >
-            {/* Workspace Header and Navigation */}
             <Box sx={{ 
               flexGrow: 1, 
               overflow: 'auto',
               display: 'flex',
               flexDirection: 'column',
             }}>
-              {/* Workspace Selector */}
               <List>
                 <ListItemButton 
                   onClick={handleWorkspaceMenuClick}
@@ -1354,70 +1064,384 @@ function UserPage() {
                     }} 
                   />
                 </ListItemButton>
-
-                {/* Channel and DM Items */}
+                <Popper
+                  open={Boolean(workspaceMenuAnchor)}
+                  anchorEl={workspaceMenuAnchor}
+                  placement="bottom-start"
+                  transition
+                  sx={{ zIndex: (theme) => theme.zIndex.drawer + 3 }}
+                >
+                  {({ TransitionProps }) => (
+                    <Grow {...TransitionProps}>
+                      <Paper 
+                        sx={{ 
+                          width: 264,
+                          maxHeight: 'calc(100vh - 100px)',
+                          overflow: 'auto',
+                          mt: 0.5,
+                          backgroundColor: '#F8F8F8',
+                          border: '1px solid rgba(70, 17, 71, 0.1)',
+                        }}
+                      >
+                        <ClickAwayListener onClickAway={handleWorkspaceMenuClose}>
+                          <MenuList>
+                            <MenuItem sx={{ py: 1, px: 2 }}>
+                              <Avatar 
+                                sx={{ 
+                                  width: 24, 
+                                  height: 24, 
+                                  fontSize: '0.75rem',
+                                  borderRadius: 1.5,
+                                  bgcolor: getAvatarColor(currentWorkspace?.id),
+                                  mr: 1.5,
+                                }}
+                              >
+                                {currentWorkspace?.name?.charAt(0).toUpperCase()}
+                              </Avatar>
+                              <Typography
+                                variant="subtitle2"
+                                sx={{
+                                  fontWeight: 'bold',
+                                  color: '#1d1c1d',
+                                  fontSize: '0.875rem',
+                                }}
+                              >
+                                {currentWorkspace?.name}
+                              </Typography>
+                            </MenuItem>
+                            {currentUserRole === 'owner' && (
+                              <MenuItem
+                                onClick={handleWorkspaceSettingsOpen}
+                                sx={{ 
+                                  color: '#1d1c1d',
+                                  fontSize: '0.875rem',
+                                  py: 0.75,
+                                  px: 2,
+                                  '&:hover': {
+                                    backgroundColor: 'rgba(70, 17, 71, 0.05)',
+                                  },
+                                }}
+                              >
+                                Settings
+                              </MenuItem>
+                            )}
+                          </MenuList>
+                        </ClickAwayListener>
+                      </Paper>
+                    </Grow>
+                  )}
+                </Popper>
+            <Divider />
+            
+                <ListItemButton 
+                  onClick={handleChannelsClick}
+                  sx={{
+                    mx: '8px',
+                    mt: 2,
+                    borderRadius: '6px',
+                    py: 0.1,
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    },
+                    '& .MuiListItemText-primary': {
+                      fontSize: '15px',
+                    },
+                  }}
+                >
+                  <Box sx={{ 
+                    mr: 1.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}>
+                    {channelsOpen ? <ArrowDropDownIcon /> : <ArrowRightIcon />}
+                  </Box>
+                  <ListItemText primary="Channels" />
+                </ListItemButton>
+            
+            <Collapse in={channelsOpen} timeout="auto" unmountOnExit>
+              <List component="div" disablePadding>
                 {channels.map((channel) => (
-                  <ListItemButton 
+                  <ListItemButton
                     key={channel.id}
                     onClick={() => handleChannelSelect(channel)}
+                    selected={selectedChannel?.id === channel.id}
+                    sx={{ 
+                      pl: 4,
+                      py: 0.1,
+                      mx: '8px',
+                      borderRadius: '6px',
+                      '&:hover': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      },
+                      '&.Mui-selected': {
+                        backgroundColor: 'rgb(249, 237, 255)',
+                        '& .MuiListItemText-primary': {
+                          color: '#461147',
+                        },
+                        '& .MuiSvgIcon-root': {
+                          color: '#461147',
+                        },
+                        '&:hover': {
+                          backgroundColor: 'rgb(249, 237, 255)',
+                        },
+                      },
+                    }}
                   >
+                    <ListItemIcon sx={{ color: 'rgb(249, 237, 255)', minWidth: 36 }}>
+                      <TagIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primary={channel.name} />
+                  </ListItemButton>
+                ))}
+                <ListItemButton
+                  onClick={() => setIsCreateChannelOpen(true)}
+                  sx={{ 
+                    pl: 4,
+                    mx: '8px',
+                    borderRadius: '6px',
+                    py: 0.1,
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    },
+                  }}
+                >
+                  <ListItemIcon sx={{ color: 'rgb(249, 237, 255)', minWidth: 36 }}>
+                    <AddIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText primary="Add Channel" />
+                </ListItemButton>
+              </List>
+            </Collapse>
+
+            <ListItemButton onClick={handleDMsClick}
+              sx={{
+                mx: '8px',
+                mt: 2,
+                borderRadius: '6px',
+                py: 0.1,
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                },
+              }}
+            >
+              <Box sx={{ 
+                mr: 1.5,
+                display: 'flex',
+                alignItems: 'center',
+              }}>
+                {dmsOpen ? <ArrowDropDownIcon /> : <ArrowRightIcon />}
+              </Box>
+              <ListItemText primary="Direct Messages" />
+            </ListItemButton>
+
+            <Collapse in={dmsOpen} timeout="auto" unmountOnExit>
+              <List component="div" disablePadding>
+                {users.map((user) => (
+                  <ListItemButton
+                    key={user.id}
+                    onClick={() => handleUserSelect(user)}
+                    selected={selectedUser?.id === user.id}
+                    sx={{ 
+                      pl: 4,
+                      py: 0.1,
+                      mx: '8px',
+                      borderRadius: '6px',
+                      '&:hover': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      },
+                      '&.Mui-selected': {
+                        backgroundColor: 'rgb(249, 237, 255)',
+                        '& .MuiListItemText-primary': {
+                          color: '#461147',
+                        },
+                        '& .MuiListItemText-secondary': {
+                          color: 'rgba(70, 17, 71, 0.7)',
+                        },
+                        '&:hover': {
+                          backgroundColor: 'rgb(249, 237, 255)',
+                        },
+                      },
+                    }}
+                  >
+                    <ListItemIcon sx={{ minWidth: 28, position: 'relative' }}>
+                      <Avatar 
+                        sx={{ 
+                          width: 24, 
+                          height: 24, 
+                          fontSize: '0.75rem',
+                          borderRadius: 1,
+                          bgcolor: getAvatarColor(user.id),
+                          fontWeight: 700
+                        }}
+                      >
+                        {user.name.charAt(0).toUpperCase()}
+                      </Avatar>
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          bottom: 0,
+                          right: 2,
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          border: '2px solid rgba(249, 237, 255, 0.15)',
+                          backgroundColor: user.user_presence?.status === 'active' ? '#44b700' : '#B8B8B8',
+                          zIndex: 1
+                        }}
+                      />
+                    </ListItemIcon>
                     <ListItemText 
-                      primary={channel.name}
-                      secondary={`${channel.messages.length} messages`}
+                      primary={user.name}
+                      secondary={user.user_presence?.status_message}
+                      sx={{
+                        ml: 1,
+                        '& .MuiListItemText-secondary': {
+                          color: 'rgba(249, 237, 255, 0.7)',
+                          fontSize: '0.75rem',
+                          lineHeight: '1.2'
+                        }
+                      }}
                     />
                   </ListItemButton>
                 ))}
-
-                {/* Direct Messages */}
-                {dmsOpen && (
-                  <ListItemButton 
-                    onClick={handleDMsClick}
-                  >
-                    <ListItemText 
-                      primary="Direct Messages"
-                      secondary={`${selectedUser ? selectedUser.name : 'No messages'}`}
-                    />
-                  </ListItemButton>
-                )}
               </List>
-            </Box>
-          </Drawer>
+            </Collapse>
+          </List>
+        </Box>
+      </Drawer>
 
-          {/* Main Content Area */}
+          {/* Content and Settings Container */}
           <Box sx={{ 
+            display: 'flex', 
             flexGrow: 1,
-            p: 2,
-            overflow: 'auto',
+            position: 'relative',
           }}>
-            {/* Messages and Threads */}
-            {selectedChannel ? (
-              <Messaging
-                channel={selectedChannel}
-                currentUser={currentUser}
-                workspaceMembers={workspaceMembers}
-                onThreadClick={handleThreadClick}
-              />
-            ) : (
-              <DirectMessaging
-                currentUser={currentUser}
-                selectedUser={selectedUser}
-                workspaceMembers={workspaceMembers}
-                onThreadClick={handleThreadClick}
-              />
-            )}
-          </Box>
+            {/* Main Content Area */}
+            <Box sx={{ 
+              width: sidePanelState.isOpen ? 'calc(100% - 400px)' : '100%',
+              transition: 'width 0.3s ease',
+              display: 'flex',
+              flexDirection: 'column',
+              height: '100%',
+              bgcolor: '#fff',
+            }}>
+              {showSearchResults ? (
+                <SearchResults
+                  query={currentSearchQuery}
+                  results={searchResults}
+                  loading={isSearching}
+                  onMessageClick={handleSearchResultClick}
+                  workspaceId={currentWorkspace.id}
+                  currentUser={currentUser}
+                />
+              ) : (
+                (selectedChannel || selectedUser) && (
+                  <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    height: '100%',
+                  }}>
+                    {/* Header */}
+            <Box sx={{ 
+              p: 2, 
+              borderBottom: 1, 
+              borderColor: 'divider',
+              backgroundColor: 'background.paper',
+                      flexShrink: 0,
+            }}>
+              {selectedChannel ? (
+                <>
+                  <Typography variant="h6"># {selectedChannel.name}</Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Welcome to the {selectedChannel.name} channel!
+                  </Typography>
+                </>
+              ) : (
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box>
+                    <Typography variant="h6">{selectedUser.name}</Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      Direct message with {selectedUser.name}
+                    </Typography>
+                  </Box>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleUserBotClick(selectedUser)}
+                    sx={{
+                      color: 'grey.600',
+                      '&:hover': {
+                        color: 'primary.main',
+                        bgcolor: 'action.hover',
+                      },
+                    }}
+                  >
+                    <SmartToyIcon />
+                  </IconButton>
+                </Box>
+              )}
+            </Box>
 
-          {/* Side Panel */}
-          <SidePanel
-            state={sidePanelState}
-            onClose={handleSidePanelClose}
-          />
+                    {/* Messages Area */}
+                    <Box sx={{ flexGrow: 1, minHeight: 0, overflow: 'hidden' }}>
+              {selectedChannel ? (
+                <Messaging 
+                  channelId={selectedChannel.id} 
+                  channelName={selectedChannel.name}
+                  workspaceId={currentWorkspace.id}
+                  workspaceName={currentWorkspace.name}
+                  onThreadClick={handleThreadClick}
+                />
+              ) : (
+                <DirectMessaging 
+                  recipientId={selectedUser.id}
+                  recipientName={selectedUser.name}
+                  workspaceId={currentWorkspace.id}
+                  workspaceName={currentWorkspace.name}
+                  onThreadClick={handleThreadClick}
+                />
+              )}
+            </Box>
+          </Box>
+                )
+              )}
+            </Box>
+
+            {/* Side Panel */}
+            <SidePanel
+              open={sidePanelState.isOpen}
+              onClose={handleSidePanelClose}
+              type={sidePanelState.type}
+              title={
+                sidePanelState.type === 'assistant' ? 'AI Assistant' :
+                sidePanelState.type === 'replies' ? 'Thread' :
+                sidePanelState.type === 'user-bot' ? `${sidePanelState.data?.name}-bot` :
+                ''
+              }
+            >
+              {sidePanelState.type === 'assistant' && (
+                <AiAssistantContent 
+                  queryAiAssistant={(query) => queryAiAssistant(query, currentWorkspace?.id)} 
+                />
+              )}
+              {sidePanelState.type === 'replies' && (
+                <RepliesContent 
+                  parentMessage={sidePanelState.data}
+                  workspaceName={currentWorkspace.name}
+                  channelName={sidePanelState.data.channel?.name || selectedChannel?.name}
+                />
+              )}
+              {sidePanelState.type === 'user-bot' && (
+                <UserBotContent 
+                  user={sidePanelState.data}
+                  currentUser={currentUser}
+                  workspaceId={currentWorkspace.id}
+                />
+              )}
+            </SidePanel>
+          </Box>
         </Box>
       </Box>
 
-      {/* Modals */}
-      
-      {/* Create Channel Modal */}
       <Modal
         open={isCreateChannelOpen}
         onClose={() => setIsCreateChannelOpen(false)}
@@ -1468,7 +1492,6 @@ function UserPage() {
         </Paper>
       </Modal>
 
-      {/* Create Workspace Modal */}
       <CreateWorkspaceModal
         open={isCreateWorkspaceOpen}
         onClose={() => setIsCreateWorkspaceOpen(false)}
@@ -1495,7 +1518,6 @@ function UserPage() {
             p: 3,
           }}
         >
-          {/* Settings Header */}
           <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="h6">
               Workspace Settings
@@ -1522,7 +1544,6 @@ function UserPage() {
               </Typography>
 
               <Stack spacing={3}>
-                {/* Workspace Name Field */}
                 <Box>
                   <Typography variant="subtitle2" sx={{ mb: 1 }}>
                     Workspace Name
@@ -1540,7 +1561,6 @@ function UserPage() {
                   />
                 </Box>
 
-                {/* Workspace Description Field */}
                 <Box>
                   <Typography variant="subtitle2" sx={{ mb: 1 }}>
                     Description
@@ -1685,7 +1705,6 @@ function UserPage() {
             p: 3,
           }}
         >
-          {/* Invite Modal Header */}
           <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="h6">
               Invite Members
@@ -1696,14 +1715,12 @@ function UserPage() {
           </Box>
 
           <Stack spacing={3}>
-            {/* Invite Generation Section */}
             <Box>
               <Typography variant="subtitle2" sx={{ mb: 2 }}>
                 Generate an invite link or code to share with others
               </Typography>
               
               <Stack spacing={2}>
-                {/* Generate Invite Buttons */}
                 <Box sx={{ display: 'flex', gap: 2 }}>
                   {!inviteLink && (
                     <Button
@@ -1731,7 +1748,6 @@ function UserPage() {
                   Invites automatically expire after use
                 </Typography>
 
-                {/* Invite Link Display */}
                 {inviteLink && (
                   <Box sx={{ 
                     display: 'flex', 
@@ -1753,6 +1769,7 @@ function UserPage() {
                       variant="contained"
                       onClick={() => {
                         navigator.clipboard.writeText(inviteLink);
+                        // TODO: Show a copy success message
                       }}
                     >
                       Copy
@@ -1760,7 +1777,6 @@ function UserPage() {
                   </Box>
                 )}
 
-                {/* Invite Code Display */}
                 {inviteCode && (
                   <Box sx={{ 
                     display: 'flex', 
@@ -1782,6 +1798,7 @@ function UserPage() {
                       variant="contained"
                       onClick={() => {
                         navigator.clipboard.writeText(inviteCode);
+                        // TODO: Show a copy success message
                       }}
                     >
                       Copy
@@ -1793,7 +1810,6 @@ function UserPage() {
 
             <Divider />
 
-            {/* Active Invites Section */}
             <Box>
               <Typography variant="subtitle2" sx={{ mb: 2 }}>
                 Active Invites

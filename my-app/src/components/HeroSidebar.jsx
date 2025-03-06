@@ -1,26 +1,3 @@
-/**
- * HeroSidebar Component
- * 
- * A permanent sidebar component that provides primary navigation and workspace switching.
- * Features workspace selection, activity sections, and user profile management.
- * 
- * Features:
- * - Workspace switching with visual feedback
- * - Activity section navigation (Home, DMs, Activity, More)
- * - User profile management
- * - Online/offline status indication
- * - Workspace creation and joining
- * 
- * @component
- * @param {Object} props
- * @param {Object} props.currentUser - Current user object with profile data
- * @param {Array} props.workspaces - Array of available workspaces
- * @param {Object} props.currentWorkspace - Currently selected workspace
- * @param {Function} props.onCreateWorkspace - Callback when creating a new workspace
- * @param {Function} props.onWorkspaceSelect - Callback when selecting a workspace
- * @param {Function} props.onLogout - Callback for user logout
- */
-
 import React, { useState, useEffect, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -59,16 +36,10 @@ export default function HeroSidebar({
   onLogout
 }) {
   const navigate = useNavigate();
+  const [selectedHeroButton, setSelectedHeroButton] = useState('home');
+  const [workspaceSwitcherAnchor, setWorkspaceSwitcherAnchor] = useState(null);
+  const [userMenuAnchor, setUserMenuAnchor] = useState(null);
 
-  // State Management
-  const [selectedHeroButton, setSelectedHeroButton] = useState('home'); // Active navigation button
-  const [workspaceSwitcherAnchor, setWorkspaceSwitcherAnchor] = useState(null); // Workspace switcher menu anchor
-  const [userMenuAnchor, setUserMenuAnchor] = useState(null); // User menu anchor
-
-  /**
-   * Handles opening/closing the workspace switcher menu
-   * @param {Event} event - Click event
-   */
   const handleWorkspaceSwitcherClick = (event) => {
     setWorkspaceSwitcherAnchor(workspaceSwitcherAnchor ? null : event.currentTarget);
   };
@@ -77,10 +48,6 @@ export default function HeroSidebar({
     setWorkspaceSwitcherAnchor(null);
   };
 
-  /**
-   * Handles opening/closing the user menu
-   * @param {Event} event - Click event
-   */
   const handleUserMenuClick = (event) => {
     setUserMenuAnchor(event.currentTarget);
   };
@@ -89,10 +56,6 @@ export default function HeroSidebar({
     setUserMenuAnchor(null);
   };
 
-  /**
-   * Handles workspace selection from the switcher menu
-   * @param {Object} workspace - Selected workspace
-   */
   const handleWorkspaceSelect = (workspace) => {
     onWorkspaceSelect(workspace);
     handleWorkspaceSwitcherClose();
@@ -172,7 +135,7 @@ export default function HeroSidebar({
                 },
               }}
             >
-              {currentWorkspace?.name ? currentWorkspace.name.charAt(0).toUpperCase() : ''}
+              {currentWorkspace?.name?.charAt(0).toUpperCase()}
             </IconButton>
             <Popper
               open={Boolean(workspaceSwitcherAnchor)}
@@ -346,7 +309,7 @@ export default function HeroSidebar({
                 lineHeight: '12px',
               }}
             >
-              {button.id ? button.id.charAt(0).toUpperCase() + button.id.slice(1) : ''}
+              {button.id.charAt(0).toUpperCase() + button.id.slice(1)}
             </Typography>
           </Box>
         ))}
@@ -372,7 +335,7 @@ export default function HeroSidebar({
               },
             }}
           >
-            {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : ''}
+            {currentUser?.name?.charAt(0).toUpperCase()}
           </IconButton>
           <Box
             sx={{

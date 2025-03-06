@@ -1,21 +1,3 @@
-/**
- * UserBotContent Component
- * 
- * An AI-powered chat interface that simulates conversations with a user's bot persona.
- * Uses OpenAI's GPT model to generate responses that mimic the user's writing style.
- * 
- * Features:
- * - Context-aware responses using recent message history
- * - Vector similarity search for relevant past messages
- * - Typing animation for bot responses
- * - Real-time chat interface
- * - Message history preservation
- * 
- * @param {Object} user - The user whose bot persona is being simulated
- * @param {Object} currentUser - The user currently interacting with the bot
- * @param {string} workspaceId - Current workspace context
- */
-
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Box,
@@ -30,31 +12,16 @@ import { supabase } from '../supabaseClient';
 import { typeText } from '../utils/textAnimation';
 import { generateEmbedding } from '../utils/embeddings';
 
-/**
- * Main component state:
- * - messages: Array of chat messages with role and content
- * - newMessage: Current message input value
- * - isLoading: Boolean tracking message generation state
- */
 export default function UserBotContent({ user, currentUser, workspaceId }) {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
-  /**
-   * Scrolls chat to the latest message.
-   * Triggered after new messages or component updates.
-   */
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  /**
-   * Fetches recent direct messages between users for context.
-   * Limited to last 5 messages for relevance.
-   * @returns {Promise<Array>} Recent messages array
-   */
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
@@ -82,13 +49,6 @@ export default function UserBotContent({ user, currentUser, workspaceId }) {
     }
   };
 
-  /**
-   * Handles sending a new message and generating bot response.
-   * Includes:
-   * 1. Vector similarity search for relevant context
-   * 2. OpenAI API call for response generation
-   * 3. Typing animation for response display
-   */
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
 
@@ -218,7 +178,7 @@ console.log("user.name:", user.name);
       height: '100%',
       bgcolor: '#F8F8F8',
     }}>
-      {/* Messages area with chat bubbles */}
+      {/* Messages area */}
       <Box sx={{ 
         flexGrow: 1, 
         overflowY: 'auto',
@@ -251,7 +211,7 @@ console.log("user.name:", user.name);
         <div ref={messagesEndRef} />
       </Box>
 
-      {/* Message input area with send button */}
+      {/* Input area */}
       <Box sx={{ 
         p: 2, 
         bgcolor: 'background.paper',

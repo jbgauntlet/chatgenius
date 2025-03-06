@@ -1,11 +1,3 @@
-/**
- * Global Application Styles
- * 
- * Defines root-level styles and global CSS variables.
- * Sets up base font settings and layout configurations.
- */
-
-/* Root Variables and Base Font Settings */
 :root {
   font-family: 'Lato', sans-serif;
   line-height: 1.5;
@@ -16,7 +8,6 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Reset Base Element Styles */
 html, body {
   margin: 0;
   padding: 0;
@@ -24,7 +15,6 @@ html, body {
   width: 100%;
 }
 
-/* Root Container Layout */
 div#root {
   width: 100vw;
   height: 100vh;
@@ -32,17 +22,16 @@ div#root {
   padding: 0;
 }
 
-/* Global Box Sizing */
 * {
   box-sizing: border-box;
 }
 
-/* Button Reset and Font */
+/* Remove default button styles */
 button {
   font-family: 'Lato', sans-serif;
 }
 
-/* Form Element Font */
+/* Ensure inputs use Lato */
 input, textarea {
   font-family: 'Lato', sans-serif;
 }

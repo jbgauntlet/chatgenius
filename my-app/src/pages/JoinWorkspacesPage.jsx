@@ -1,20 +1,3 @@
-/**
- * JoinWorkspacesPage Component
- * 
- * A page component that displays available workspaces and allows users to join them.
- * Features both public workspace discovery and private workspace access via invite codes.
- * 
- * Features:
- * - Public workspace discovery
- * - Private workspace access via invite codes
- * - Workspace creation
- * - Real-time search filtering
- * - Tabbed interface for public and joined workspaces
- * - Responsive grid layout
- * 
- * @component
- */
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -51,32 +34,23 @@ import CreateWorkspaceModal from '../components/CreateWorkspaceModal';
 
 export default function JoinWorkspacesPage() {
   const navigate = useNavigate();
+  const [workspaces, setWorkspaces] = useState([]);
+  const [myWorkspaces, setMyWorkspaces] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [joiningWorkspace, setJoiningWorkspace] = useState(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isJoinPrivateModalOpen, setIsJoinPrivateModalOpen] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
+  const [currentTab, setCurrentTab] = useState(0);
 
-  // State Management
-  const [workspaces, setWorkspaces] = useState([]); // Public workspaces
-  const [myWorkspaces, setMyWorkspaces] = useState([]); // User's joined workspaces
-  const [loading, setLoading] = useState(true); // Loading state for workspace data
-  const [error, setError] = useState(null); // Error state for operations
-  const [searchQuery, setSearchQuery] = useState(''); // Search filter text
-  const [joiningWorkspace, setJoiningWorkspace] = useState(null); // Currently joining workspace
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false); // Create workspace modal
-  const [isJoinPrivateModalOpen, setIsJoinPrivateModalOpen] = useState(false); // Join private workspace modal
-  const [joinCode, setJoinCode] = useState(''); // Private workspace invite code
-  const [currentTab, setCurrentTab] = useState(0); // Active tab index
-
-  /**
-   * Checks user authentication on component mount
-   * Redirects to login if not authenticated
-   */
   useEffect(() => {
     checkAuth();
     fetchPublicWorkspaces();
     fetchMyWorkspaces();
   }, []);
 
-  /**
-   * Verifies user authentication status
-   */
   const checkAuth = async () => {
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) {
@@ -84,9 +58,6 @@ export default function JoinWorkspacesPage() {
     }
   };
 
-  /**
-   * Fetches public workspaces with member counts and owner details
-   */
   const fetchPublicWorkspaces = async () => {
     try {
       const { data, error } = await supabase
@@ -118,9 +89,6 @@ export default function JoinWorkspacesPage() {
     }
   };
 
-  /**
-   * Fetches workspaces that the current user is a member of
-   */
   const fetchMyWorkspaces = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -153,10 +121,6 @@ export default function JoinWorkspacesPage() {
     }
   };
 
-  /**
-   * Handles joining a workspace or navigating to an existing one
-   * @param {Object} workspace - The workspace to join or navigate to
-   */
   const handleJoinWorkspace = async (workspace) => {
     setJoiningWorkspace(workspace.id);
     setError(null);
@@ -214,32 +178,19 @@ export default function JoinWorkspacesPage() {
     }
   };
 
-  /**
-   * Handles successful workspace creation
-   * @param {Object} workspace - The newly created workspace
-   */
   const handleWorkspaceCreated = (workspace) => {
     navigate('/user');
   };
 
-  /**
-   * Handles tab change between public and my workspaces
-   * @param {Event} event - Tab change event
-   * @param {number} newValue - New tab index
-   */
   const handleTabChange = (event, newValue) => {
     setCurrentTab(newValue);
   };
 
-  // Filter workspaces based on search query
   const filteredWorkspaces = (currentTab === 0 ? workspaces : myWorkspaces).filter(workspace =>
     workspace.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (workspace.description && workspace.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  /**
-   * Handles joining a workspace using an invite code
-   */
   const handleJoinWithCode = async () => {
     setError(null);
 
@@ -310,7 +261,6 @@ export default function JoinWorkspacesPage() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      {/* Header Section */}
       <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h4" component="h1">
           Workspaces
@@ -333,7 +283,6 @@ export default function JoinWorkspacesPage() {
         </Box>
       </Box>
 
-      {/* Search Bar */}
       <Box sx={{ mb: 4 }}>
         <TextField
           fullWidth
@@ -350,7 +299,6 @@ export default function JoinWorkspacesPage() {
         />
       </Box>
 
-      {/* Tab Navigation */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
         <Tabs value={currentTab} onChange={handleTabChange}>
           <Tab label="Public Workspaces" />
@@ -358,14 +306,12 @@ export default function JoinWorkspacesPage() {
         </Tabs>
       </Box>
 
-      {/* Error Alert */}
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
           {error}
         </Alert>
       )}
 
-      {/* Workspace Grid */}
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress />
@@ -434,7 +380,6 @@ export default function JoinWorkspacesPage() {
         </Grid>
       )}
 
-      {/* Create Workspace Modal */}
       <CreateWorkspaceModal
         open={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}

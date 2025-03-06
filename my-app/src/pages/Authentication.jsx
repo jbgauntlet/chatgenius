@@ -1,21 +1,3 @@
-/**
- * Authentication Page Component
- * 
- * The main authentication page that handles user login.
- * Features a clean, modern design with email/password authentication.
- * 
- * Features:
- * - Email and password authentication
- * - Form validation
- * - Error handling
- * - Loading states
- * - Navigation to signup
- * - Styled form components
- * - Responsive design
- * 
- * @component
- */
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -32,10 +14,7 @@ import {
 } from '@mui/material';
 import { supabase } from '../supabaseClient';
 
-/**
- * Custom styled TextField component
- * Features custom border radius, font sizes, and hover/focus states
- */
+// Custom styled components
 const StyledTextField = styled(TextField)({
   '& .MuiOutlinedInput-root': {
     fontSize: '18px',
@@ -63,10 +42,6 @@ const StyledTextField = styled(TextField)({
   },
 });
 
-/**
- * Custom styled Button component
- * Features custom border radius, font sizes, and dimensions
- */
 const StyledButton = styled(Button)({
   fontSize: '18px',
   padding: '9px 12px',
@@ -78,18 +53,11 @@ const StyledButton = styled(Button)({
 
 export default function Authentication() {
   const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // State Management
-  const [email, setEmail] = useState(''); // User email input
-  const [password, setPassword] = useState(''); // User password input
-  const [loading, setLoading] = useState(false); // Loading state for form submission
-  const [error, setError] = useState(null); // Error state for form validation
-
-  /**
-   * Handles form submission for user login
-   * Authenticates user with Supabase
-   * @param {Event} e - Form submission event
-   */
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);

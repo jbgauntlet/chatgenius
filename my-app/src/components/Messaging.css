@@ -1,17 +1,8 @@
-/**
- * Messaging Component Styles
- * 
- * Defines styles for the messaging interface components.
- * Includes styles for message containers, editor, and various UI elements.
- */
-
-/* Editor Container */
 .editor-container {
   position: relative;
   background-color: #fff;
 }
 
-/* Message Container */
 .message-container {
   padding: 12px 16px;
   margin-bottom: 8px;
@@ -20,32 +11,27 @@
   background-color: #fff;
 }
 
-/* Hover effect for message containers */
 .message-container:hover {
   background-color: #f8f9fa;
 }
 
-/* Message Header Layout */
 .message-header {
   margin-bottom: 4px;
   display: flex;
   align-items: flex-end;
 }
 
-/* User Info Section */
 .message-user-info {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-/* User Name Style */
 .message-name {
   font-weight: bold;
   margin-right: 8px;
 }
 
-/* User Avatar Style */
 .message-avatar {
   width: 28px;
   height: 28px;
@@ -59,7 +45,6 @@
   background-color: #007bff;
 }
 
-/* Message Timestamp Style */
 .message-timestamp {
   font-size: 12px;
   color: #666;
@@ -67,12 +52,10 @@
   padding-bottom: 0.5px;
 }
 
-/* Message Content Style */
 .message-content {
   color: #2c2c2c;
 }
 
-/* Quill Editor Container */
 .ql-container {
   height: 100px;
   min-height: 100px;
@@ -80,7 +63,6 @@
   overflow-y: auto;
 }
 
-/* Quill Editor Toolbar */
 .ql-toolbar {
   border-top: none !important;
   border-left: none !important;
@@ -88,12 +70,10 @@
   border-bottom: 1px solid #e0e0e0 !important;
 }
 
-/* Remove default Quill container borders */
 .ql-container {
   border: none !important;
 }
 
-/* Send Button Style */
 .send-button {
   position: absolute;
   bottom: 10px;
@@ -107,12 +87,10 @@
   z-index: 1;
 }
 
-/* Send Button Hover Effect */
 .send-button:hover {
   background-color: #0056b3;
 }
 
-/* Quill Editor Placeholder Style */
 .ql-editor.ql-blank::before {
   font-style: normal !important;
   color: #666;

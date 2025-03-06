@@ -1,25 +1,3 @@
-/**
- * SearchBar Component
- * 
- * A versatile search component that provides real-time suggestions for users and channels.
- * Features a dynamic dropdown with categorized results and support for global search.
- * 
- * Features:
- * - Real-time search suggestions
- * - User and channel search
- * - Global search capability
- * - Keyboard navigation support
- * - Styled dropdown with categories
- * 
- * @component
- * @param {Object} props
- * @param {Array} props.users - Array of user objects to search through
- * @param {Array} props.channels - Array of channel objects to search through
- * @param {Function} props.onUserSelect - Callback when a user is selected
- * @param {Function} props.onChannelSelect - Callback when a channel is selected
- * @param {Function} props.onSearch - Callback for global search
- */
-
 import React, { useState, useRef } from 'react';
 import {
   Box,
@@ -40,11 +18,10 @@ export default function SearchBar({
   onChannelSelect, 
   onSearch 
 }) {
-  // State Management
-  const [searchQuery, setSearchQuery] = useState(''); // Current search text
-  const [isSearchFocused, setIsSearchFocused] = useState(false); // Focus state for styling
-  const [showSearchSuggestions, setShowSearchSuggestions] = useState(false); // Dropdown visibility
-  const searchBoxRef = useRef(null); // Reference for click outside detection
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
+  const searchBoxRef = useRef(null);
 
   // Filter suggestions based on search query
   const userSuggestions = users.filter(user => 
@@ -55,20 +32,11 @@ export default function SearchBar({
     channel.name.toLowerCase().includes(searchQuery.toLowerCase())
   ).slice(0, 3);
 
-  /**
-   * Handles search input focus
-   * Shows suggestions dropdown
-   */
   const handleSearchFocus = () => {
     setIsSearchFocused(true);
     setShowSearchSuggestions(true);
   };
 
-  /**
-   * Handles search input blur
-   * Hides suggestions if click is outside search area
-   * @param {Event} e - Blur event
-   */
   const handleSearchBlur = (e) => {
     if (!e.relatedTarget?.closest('.search-suggestions')) {
       setIsSearchFocused(false);
@@ -76,37 +44,22 @@ export default function SearchBar({
     }
   };
 
-  /**
-   * Updates search query state and filters suggestions
-   * @param {Event} event - Change event from search input
-   */
   const handleSearch = (event) => {
     setSearchQuery(event.target.value);
   };
 
-  /**
-   * Handles user suggestion selection
-   * @param {Object} user - Selected user object
-   */
   const handleUserSuggestionClick = (user) => {
     onUserSelect(user);
     setSearchQuery('');
     setShowSearchSuggestions(false);
   };
 
-  /**
-   * Handles channel suggestion selection
-   * @param {Object} channel - Selected channel object
-   */
   const handleChannelSuggestionClick = (channel) => {
     onChannelSelect(channel);
     setSearchQuery('');
     setShowSearchSuggestions(false);
   };
 
-  /**
-   * Triggers global search with current query
-   */
   const handleSearchClick = () => {
     onSearch(searchQuery);
     setShowSearchSuggestions(false);
@@ -125,7 +78,6 @@ export default function SearchBar({
         alignItems: 'center',
       }}
     >
-      {/* Search Input */}
       <Box
         component="form"
         onSubmit={(e) => e.preventDefault()}
@@ -201,7 +153,7 @@ export default function SearchBar({
             zIndex: (theme) => theme.zIndex.modal + 1,
           }}
         >
-          {/* Global Search Section */}
+          {/* Text Search Section */}
           <Typography
             variant="overline"
             sx={{
